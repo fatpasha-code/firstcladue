@@ -11,11 +11,11 @@
 
 **Covers:** AUTH-01, AUTH-02, AUTH-03
 
-### Plans
+**Plans:** 2 plans
 
-1. **Initialize Next.js project** — create-next-app, Tailwind, shadcn/ui, TypeScript config, folder structure
-2. **Supabase setup** — project created, env vars configured, `@supabase/ssr` client (server + browser), middleware for session
-3. **Auth UI** — `/login` page (email/password + magic link), redirect after login, sign out
+Plans:
+- [ ] 01-01-PLAN.md — Scaffold Next.js project + Supabase client utilities + auth middleware
+- [ ] 01-02-PLAN.md — Auth UI: login page, password reset flow, sign out, protected home page
 
 **Done when:**
 - [ ] `npm run dev` runs without errors
