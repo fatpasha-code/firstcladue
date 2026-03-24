@@ -1,174 +1,95 @@
-# CODING_PROCESS.md — Development Workflow Rules
+# CODING_PROCESS.md — Процесс разработки
 
-## Принципы разработки
+## Принципы
 
-### 1. Вертикальные слайсы
+### 1. Читай спеку перед кодом
 
-Не "сначала backend, потом frontend", а **одна фича от конца до конца**:
+Перед реализацией:
+- Прочитай TECH_SPEC.md или соответствующий SPEC_TEMPLATE.md
+- Убедись что понимаешь что нужно сделать
+- Если спека противоречивая или устаревшая — обнови её перед кодом, не кодируй по догадке
+- Если ответа нет в документации — спроси, не придумывай
+
+### 2. Вертикальные слайсы
+
+Не "сначала вся БД, потом всё API, потом всё UI". Одна фича — только нужные ей слои, от конца до конца.
+
+Не каждая фича требует DB + API + UI + тест. Включать только реально нужные слои:
 
 ```
-Фича = Данные (DB) + API (backend) + UI (frontend) + Тесты + Аналитика
+Примеры:
+  "Пользователь видит результат анализа"
+    → DB: добавить extracted_data column
+    → API: Server Action для extraction
+    → UI: страница /analyses/[id] с результатами
+    → Test: тест парсинга Claude API response
 
-Пример: "User sees extracted data"
-  → Database: create analyses table + RLS
-  → API: POST /api/analyze + GET /api/analyses/:id/status
-  → UI: /analyze page + /analyses/:id results page
-  → Tests: unit tests on extraction, integration tests on API
-  → Analytics: PostHog events on success/error
+  "Исправить отображение даты в карточке"
+    → UI: только правка компонента
+    → (DB и API не нужны)
 
-Timeline: 4–6 часов для такой фичи (1 день)
+  "Добавить индекс для ускорения запроса"
+    → DB: миграция с индексом
+    → (API и UI не меняются)
 ```
 
-### 2. TDD selectively
+### 3. TDD selectively
 
-Пишешь **tests ПЕРЕД кодом** для:
-- ✓ API routes (input validation, status codes)
-- ✓ Critical business logic (extraction, payments)
-- ✓ Integrations (Claude API, Supabase queries)
+Тесты **до кода** для:
+- API routes и Server Actions (validation, status codes)
+- Критическая бизнес-логика (парсинг extraction, report generation)
+- Интеграции с Claude API (handling errors, JSON parsing)
 
-НЕ пишешь tests для:
-- ✗ Каждый UI компонент (слишком медленно)
-- ✗ shadcn/ui components (они уже протестированы)
+Тесты **после кода** или **не нужны**:
+- UI-компоненты (Snapshot тесты опционально)
+- shadcn/ui-компоненты (уже протестированы)
+- Простые утилиты без логики
 
-**Цель**: >80% coverage на API + logic, <30% на UI.
+### 4. Vertical Review (после каждой фичи)
 
-### 3. Vertical Review (end-to-end)
+Пройдись по пути пользователя end-to-end:
 
-После каждой фичи прогуляйся по пути пользователя:
+1. Открыть страницу → отображается корректно
+2. Совершить действие → API/Action вызван
+3. Данные сохранены → проверить в Supabase
+4. Результат показан → loading/success/error работают
+5. Обновить страницу → данные персистентны
+6. Проверить чужие данные → RLS блокирует
 
-1. User opens page → UI renders correctly
-2. User types text → validation works
-3. User submits → API called, DB updated
-4. User sees result → data displayed, states (loading/success/error) work
-5. User refreshes → data persists
-6. User logs out → data inaccessible to others (RLS)
+### 5. Horizontal Review (периодически)
 
-**Время**: 15–30 минут на фичу, catches ~70% bugs.
+Проверяй согласованность между похожими местами:
+- Error handling одинаковый во всех API routes?
+- Validation одинакова в UI и API?
+- RLS есть на всех таблицах с user data?
 
-### 4. Horizontal Review (consistency)
+### 6. Миграции обязательны
 
-Проверь что соседние части работают одинаково:
+Любые изменения схемы БД — только через миграции:
+- Никаких ручных SQL в Supabase UI
+- Для каждой миграции должен быть rollback plan (explicit DOWN, если он безопасен; иначе — задокументированный план)
+- Тестировать локально до push
 
-- **Error handling**: `/api/analyze` и `/api/reports/generate` обрабатывают errors одинаково?
-- **RLS patterns**: все таблицы с user data имеют policy?
-- **Validation**: character limits проверяются в API и UI одинаково?
-- **Logging**: PostHog events в обоих endpoints логируются?
+### 7. Расхождение кода и спеки — требует явного решения
 
-**Время**: 10–15 минут, catches ~30% bugs.
+Если при кодировании выяснилось что реализация отличается от спеки:
+1. Зафиксировать расхождение явно (не молча переписывать ни код, ни спеку)
+2. Объяснить причину (почему спека неверна или почему код отклонился)
+3. Предложить варианты: исправить код ИЛИ обновить спеку
+4. Дождаться подтверждения пользователя
 
-### 5. Hooks обязательно
-
-Pre-commit, pre-push, pre-release чеки:
-
-```bash
-# Pre-commit: lint + format
-npm run lint --fix
-
-# Pre-push: tests pass
-npm run test
-
-# Pre-release: env vars OK
-grep -r "process.env" src/ # no .env values should be hardcoded
-```
-
-**Без hooks**: легко запушить неработающий код, потратить 2 часа на дебаг.
-
-### 6. Migration Policy
-
-Любые изменения схемы БД **только через миграции**:
-
-```sql
--- Good: миграция с UP и DOWN
-supabase/migrations/20240324100000_add_analyses_table.sql
-  UP: CREATE TABLE analyses (...)
-  DOWN: DROP TABLE analyses;
-
--- Bad: руками в Supabase UI
-```
-
-**Почему**: В 20% случаев нужен откат. Без миграций откатываешь 2 часа вручную.
+Нельзя делать непроверенный код новым source of truth. Спека обновляется осознанно, не автоматически.
 
 ---
 
-## 10-шаговый процесс
+## Процесс: идея → shipped
 
-### 1. Discovery
-Обсудить идею, сформулировать problem statement.
-- Input: "Юзер хочет видеть extracted data"
-- Output: PROJECT_IDEA.md раздел
-
-### 2. Specification
-Развёрнутое описание в SPEC_TEMPLATE.md.
-- Input: идея
-- Output: 8 разделов спеки (данные, API, UI, edge cases)
-- Owner: planner + product owner
-
-### 3. OpenSpec Proposal
-Добавить change в OpenSpec (propose → apply → verify → archive).
-- Input: спека
-- Output: proposal для первой версии MVP
-
-### 4. GSD Configuration
-GSD принимает артефакты как source of truth.
-- Input: спека + proposal
-- Output: GSD tasks созданы
-
-### 5. Platform Setup
-Подключить Supabase + Vercel + Clerk + платёжку + основные env vars.
-- Owner: backend-engineer + database-architect
-- Delay: только если первый раз (потом переиспользуется)
-
-### 6. MCP & Documentation
-Включить Context7 + Supabase docs + GitHub.
-- Owner: any agent
-- Delay: один раз в начале
-
-### 7. Build Loop
-Вертикальные слайсы:
-
-```
-For each slice:
-  → Propose (planner + spec)
-  → Apply (database/backend/frontend agents)
-  → TDD (write tests for critical logic)
-  → Vertical review (end-to-end user path)
-  → Horizontal review (consistency checks)
-  → Preview deploy (check on Vercel)
-```
-
-Timeline: 4–6 часов за slice.
-
-### 8. Observability
-PostHog events + Sentry errors + Clarity (позже).
-- Owner: backend-engineer
-- When: during build, not after
-
-### 9. Release
-Merge в main + auto-deploy to Vercel production.
-- Owner: qa-reviewer approval
-- Requirement: DEFINITION_OF_DONE все 8 пунктов
-
-### 10. Iterate
-Собрать данные из PostHog/Clarity/Sentry → новый change в OpenSpec.
-- Owner: product owner
-- Frequency: еженедельно
-
----
-
-## Типичная неделя
-
-**Monday**:
-- Discovery (30 min) + Spec (2 hours) → SPEC_TEMPLATE.md готов
-- OpenSpec proposal → GSD tasks
-
-**Tuesday–Thursday**:
-- Build loop: 2–3 слайса, каждый 4–6 часов
-- Reviews между слайсами
-
-**Friday**:
-- Финальная vertical review + release
-- Observability setup + production deploy
-- Retrospective на process
+1. **Discovery** → описать задачу, зафиксировать в PROJECT_IDEA.md или как задачу
+2. **Spec** → заполнить SPEC_TEMPLATE.md (или сечение в TECH_SPEC.md)
+3. **Plan** → planner разбивает на вертикальные слайсы
+4. **Build** → вертикальные слайсы, TDD где нужно
+5. **Review** → vertical + horizontal review, qa-reviewer
+6. **Merge** → в main + ручная проверка в браузере (не считать что merge = "всё работает")
 
 ---
 
@@ -176,54 +97,20 @@ Merge в main + auto-deploy to Vercel production.
 
 | Проблема | Причина | Решение |
 |----------|---------|---------|
-| API возвращает 500 | Нет error handling | Добавить try/catch, вернуть 400/429 |
-| N+1 query | Нет индексов | Добавить миграцию с индексом |
-| RLS не работает | Policy не включена | Включить RLS, создать policy |
-| Rate limit не работает | Не проверяется перед API call | Добавить check, return 429 |
-| UI не показывает error | Нет error state | Добавить 4-state pattern |
+| API возвращает 500 | Нет error handling | Добавить try/catch, вернуть правильный status |
+| RLS не работает | Policy не включена | ALTER TABLE ENABLE RLS + создать policy |
+| Данные не сохраняются | FK нарушение | Проверить порядок вставки, убрать неверный FK |
+| Claude API не отвечает | Нет retry | Добавить exponential backoff |
+| JSON парсинг ломается | Нет validation | Добавить schema validation после parse |
 
 ---
 
-## Tools & Commands
+## Команды
 
 ```bash
-# Development
-npm run dev                # Next.js dev server
-npm run test              # Run tests
-npm run lint              # Lint check
-npm run build             # Build for production
-
-# Database
-npx supabase db list      # List migrations
-npx supabase db reset     # Reset local DB (dangerous!)
-npx supabase migration new # Create new migration
-
-# Deployment
-git push origin main      # Auto-deploy to Vercel preview
-git merge main            # Merge PR → auto-deploy to production
-
-# Debugging
-npm run dev -- --debug    # Next.js debug mode
-# Then: node --inspect-brk ./node_modules/.bin/next dev
+npm run dev                         # Dev server
+npm run test                        # Тесты
+npm run lint                        # Lint
+npx supabase migration new <name>   # Новая миграция
+npx supabase db reset               # Сбросить локальную БД (осторожно!)
 ```
-
----
-
-## Success Metrics
-
-**Per feature**:
-- ✓ Tests pass (>80% coverage on API/logic)
-- ✓ DEFINITION_OF_DONE all 8 items checked
-- ✓ Vercel preview works
-- ✓ qa-reviewer approval
-
-**Per week**:
-- ✓ 2–3 features shipped
-- ✓ No critical bugs on production
-- ✓ <2% error rate on new features
-
-**Per month**:
-- ✓ MVP ready for beta
-- ✓ 5+ beta users
-- ✓ NPS >40
-- ✓ Cost per extraction <$0.10

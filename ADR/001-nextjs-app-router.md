@@ -1,52 +1,36 @@
-# ADR-001: Next.js 14 with App Router
+# ADR-001: Next.js с App Router
 
-## Decision
+**Дата**: 2026-03-24
+**Статус**: Accepted
 
-Use **Next.js 14 with App Router** (not Pages Router, not Remix, not SvelteKit).
+## Решение
 
-## Context
+Использовать Next.js с App Router (не Pages Router, не Remix, не SvelteKit).
 
-Need to pick frontend framework for DevSync. Candidates:
-- Next.js 14 (App Router)
-- Remix
-- SvelteKit
-- Astro
+## Контекст
 
-## Rationale
+Нужен frontend + backend framework для internal tool.
 
-**Next.js App Router wins because**:
-1. **Server Components by default** → reduces JS bundle, faster rendering
-2. **API routes in same repo** → easy to maintain API + frontend together
-3. **Vercel integration** → 1-click deploy, preview per commit, Edge Functions
-4. **Clerk integration** → out-of-box support for Clerk auth middleware
-5. **Large ecosystem** → shadcn/ui, TanStack Router, countless integrations
-6. **TypeScript first** → better DX, fewer runtime errors
-7. **Least learning curve** for team → many tutorials, StackOverflow answers
+## Причины
 
-**Why not Remix?**: More learning curve, fewer integrations, Vercel integration less seamless.
+1. **Server Components по умолчанию** — меньше JS, проще data fetching
+2. **Server Actions** — формы без отдельного fetch endpoint, меньше кода
+3. **API routes в том же repo** — не нужен отдельный backend
+4. **Vercel** — нативный хост, zero-config deploy
+5. **shadcn/ui и другие инструменты** — нативная поддержка
 
-**Why not SvelteKit?**: Smaller ecosystem, fewer Clerk/Supabase integrations.
+## Версия
 
-**Why not Astro?**: Better for static sites; DevSync needs real-time updates + interactivity.
+Использовать актуальную стабильную версию на момент инициализации (проверить через `npm info next version`).
+Последняя известная: Next.js 15.x. Зафиксировать в package.json.
 
-## Consequences
+## Альтернативы
 
-**Positive**:
-- Fast deployment to Vercel
-- Server Components reduce client-side complexity
-- Easy API route organization
-- Strong TypeScript support
+- **Remix**: аналогичная концепция, хорошая альтернатива, но меньше экосистема
+- **SvelteKit**: отличный DX, но другой ecosystem и паттерны
+- **Vite + React SPA**: проще, но нет SSR и Server Actions
 
-**Negative**:
-- Vendor lock-in to Vercel (mitigated by exporting to standalone)
-- App Router still evolving (may have breaking changes in minor versions)
-- Larger initial bundle than Svelte (mitigated by code splitting)
+## Ограничения
 
-## Status
-
-**ACCEPTED** — Implementation begins with Next.js 14.0+
-
----
-
-Date: 2024-03-24
-Decided by: Pavel (Product Owner) + architecture team
+- App Router продолжает развиваться — следить за changelogs при обновлениях
+- Server Actions — паттерн Next.js; при смене фреймворка нужно переписать

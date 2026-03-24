@@ -1,412 +1,387 @@
-# TECH_SPEC.md — DevSync Technical Specification
+# TECH_SPEC.md — Update Tracker (Internal MVP)
 
-## Module 1: Authentication & User Management
-
-### User Stories
-- Как новый пользователь, я хочу зарегистрироваться через email/Google, чтобы получить доступ к приложению
-- Как зарегистрированный пользователь, я хочу войти через Clerk, чтобы видеть свои анализы
-- Как пользователь, я хочу выйти, чтобы закончить сессию
-- Как пользователь, я хочу увидеть мой тарифный план и возможность апгрейда
-
-### Модель данных
-```
-users
-  id: uuid (PK)
-  clerk_id: text (UNIQUE, NOT NULL)
-  email: text (UNIQUE, NOT NULL)
-  full_name: text
-  plan: text (DEFAULT 'free', enum: 'free'/'pro'/'team')
-  analyses_count_this_month: integer (DEFAULT 0)
-  created_at: timestamptz (DEFAULT now())
-  updated_at: timestamptz (DEFAULT now())
-
-RLS Policies:
-  SELECT: auth.uid() = user_id (users видят только себя)
-  UPDATE: auth.uid() = user_id
-  DELETE: auth.uid() = user_id OR is_admin
-```
-
-### API & Server Actions
-```
-POST /api/auth/callback
-  - Clerk webhook для sync user data в Supabase
-
-GET /api/me
-  Response: { id, email, full_name, plan, analyses_count_this_month }
-  Status: 200 | 401 (not authenticated)
-
-POST /api/auth/upgrade
-  Body: { plan: 'pro' | 'team' }
-  Response: { session_id } (Stripe session)
-  Status: 200 | 400 (invalid plan) | 401
-```
-
-### Экраны & Компоненты
-- **Auth Flow**:
-  - Landing page (unauthenticated): "Sign in with Clerk" button
-  - Clerk modal: email + password / Google OAuth
-  - Redirect to `/dashboard` post-auth
-- **Dashboard**:
-  - Header: "Welcome, [Name]" + plan badge + settings icon
-  - Navbar: Home / History / Settings
-  - Plan upgrade banner (если free и >3 analyses this month)
-
-### Бизнес-логика
-- Free план: 5 analyses/месяц (limit проверяется перед analyze call)
-- Pro план: 100 analyses/месяц
-- Team план: unlimited (но отдельная логика для team management)
-- При превышении лимита: показать modal "Upgrade to continue" → Stripe redirect
-
-### Крайние случаи
-- Пользователь удалён в Clerk но записи в Supabase есть: migration script на production
-- Одновременный upgrade + analyze запросы: transactional lock на analyses_count
-- Clerk webhook отстал: background job для resync
+**Этап**: internal MVP, один пользователь
+**Не в v1**: payments, PostHog, Sentry, rate limiting, multi-user, audio/video ingestion
 
 ---
 
-## Module 2: Text Input & Preprocessing
+## Доменная архитектура
 
-### User Stories
-- Как пользователь, я хочу вставить текст (call transcript / Slack logs / заметки), чтобы начать анализ
-- Как пользователь, я хочу увидеть очистку текста (удаление дубликатов, форматирование)
-- Как пользователь, я хочу видеть прогресс анализа ("extracting..." → "done")
-- Как пользователь, я хочу видеть ошибку если текст слишком короткий или формат неподдерживаемый
+Продукт состоит из трёх доменных слоёв:
 
-### Модель данных
 ```
-analyses
-  id: uuid (PK)
-  user_id: uuid (FK users.id)
-  input_text: text (NOT NULL)
-  input_length: integer
-  input_language: text (DEFAULT 'en', enum: 'en'/'ru')
-  status: text (enum: 'processing'/'completed'/'failed')
-  error_message: text (nullable)
-  created_at: timestamptz
-  updated_at: timestamptz
+1. INGESTION / TRANSCRIPTION
+   Медиа или текст → текстовая запись
+   v1: только text input
+   next phase: audio/video → транскрипция (Whisper или аналог)
 
-RLS: SELECT/UPDATE/DELETE: auth.uid() = user_id
+2. ANALYSIS / INTERPRETATION
+   Текст → структурированные данные + управленческая интерпретация
+   Extraction: что сделано, блокеры, дедлайны, назначения
+   Interpretation: суть, скрытые риски, вопросы к разработчику
+
+3. REPORTING
+   Несколько обработанных записей → управленческие артефакты
+   Weekly / monthly digest, follow-up list
+   future: KPI Drafts / Employee KPI Builder
 ```
-
-### API & Server Actions
-```
-POST /api/analyze (Server Action)
-  Body: { text: string }
-  Response: { id, status } (immediate response, async processing)
-  Status: 200 | 400 (text too short <10 words) | 401 | 429 (rate limit)
-
-GET /api/analyses/:id/status
-  Response: { id, status, error_message? }
-  Status: 200 | 404 (not found or not owned)
-```
-
-### Экраны & Компоненты
-- **Analyze Page**:
-  - Textarea: "Paste call transcript, Slack logs, or notes..."
-  - Character counter: "1,234 / 100,000 chars"
-  - Submit button (disabled if <10 words or >100k chars)
-  - Error message: "Text too short. Minimum 10 words."
-- **Processing State**:
-  - Spinner: "Analyzing..."
-  - Real-time progress (polling /api/analyses/:id/status every 2s)
-- **Success State**:
-  - "Analysis complete!" → Redirect to `/analyses/:id/results`
-
-### Бизнес-логика
-- Min length: 10 words
-- Max length: 100,000 chars
-- Rate limit: 10 requests/minute per user
-- Language auto-detect (en/ru, fallback to en)
-- Preprocessing: trim whitespace, normalize quotes, remove control characters
-
-### Крайние случаи
-- Пользователь закрыл браузер во время processing: analysis продолжится в background, user может вернуться и увидеть результат
-- Текст содержит только numbers/symbols: отклонить с "Invalid text format"
-- API crash во время processing: graceful degradation, retry с exponential backoff
 
 ---
 
-## Module 3: AI Extraction (Done / In-Progress / Blockers / Assignments / Deadlines)
+## Module 1: Auth & Session
 
 ### User Stories
-- Как система, я хочу распарсить текст и выделить что сделано, чтобы показать пользователю
-- Как система, я хочу найти блокеры и кому они нужны, чтобы пользователь мог действовать
-- Как система, я хочу найти дедлайны (явные и неявные), чтобы пользователь видел риски
-- Как система, я хочу сделать ошибки исправляемыми (allow user corrections)
+- Как пользователь, я хочу войти, чтобы получить доступ к инструменту
+- Как пользователь, я хочу выйти
+- Как система, я хочу защитить все страницы от неавторизованного доступа
 
 ### Модель данных
+
+```sql
+-- Supabase Auth управляет пользователями встроенно (auth.users).
+-- Отдельная таблица profiles нужна только для дополнительных данных.
+-- Для MVP: auth.users достаточно.
+
+-- Опционально, если нужен профиль:
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  display_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_profile" ON profiles USING (auth.uid() = id);
 ```
-extracted_data (jsonb inside analyses)
+
+### API / Integration
+```
+Supabase Auth встроен.
+Клиент: @supabase/ssr (createServerClient / createBrowserClient)
+Middleware: проверка сессии, редирект неавторизованных → /login
+```
+
+### Экраны
+- `/login` — вход (email/password или magic link)
+- Middleware: неавторизованные → `/login`
+- После входа → `/` (главная)
+
+---
+
+## Domain 1: Ingestion / Transcription
+
+### v1 — Text Input
+
+#### User Stories
+- Как пользователь, я хочу вставить текст созвона / переписки / заметок и запустить анализ
+- Как пользователь, я хочу видеть прогресс анализа
+- Как пользователь, я хочу видеть ошибку если текст слишком короткий
+
+#### Модель данных
+
+```sql
+CREATE TABLE records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  source_type TEXT DEFAULT 'text',  -- 'text' для v1; 'audio' / 'video' в next phase
+  raw_text TEXT NOT NULL,
+  label TEXT,  -- необязательная метка пользователя
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  error_message TEXT,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE records ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_records" ON records USING (auth.uid() = user_id);
+CREATE INDEX idx_records_user_created ON records(user_id, created_at DESC);
+```
+
+#### API
+```
+Server Action: createRecord(text: string, label?: string)
+  Валидация: непустой текст, разумный максимум (~50 000 символов — уточнить по опыту)
+  Создаёт запись со status='pending'
+  Запускает analysis pipeline
+  Возвращает: { id }
+```
+
+#### Как запускается асинхронная обработка
+
+**Важно**: `void runAnalysis(id)` в Vercel serverless ненадёжен — функция может завершиться до окончания обработки.
+
+**Рекомендуемый подход для MVP** (один пользователь, нет требований к concurrency):
+- Сделать обработку **синхронной** внутри Server Action. 5–15 секунд ответа — приемлемо для internal tool.
+- Пользователь видит loading state пока идёт анализ.
+
+**Если нужен async (future)**:
+- Supabase Edge Function, триггерируемая через Database Webhook при insert
+- Vercel Background Functions (требует Vercel Pro)
+- Выбор механизма — отдельное архитектурное решение, не предполагать дефолт.
+
+#### Экраны
+- **`/`** — главная страница: большое textarea, кнопка "Analyze"
+  - Состояния: пустое / loading (пока идёт обработка) / error
+
+### next phase — Audio/Video Ingestion
+
+**Не в v1.** Архитектура готова: поле `source_type` в таблице `records` позволит добавить 'audio'/'video' без смены схемы.
+
+Что потребуется:
+- Загрузка файла → Supabase Storage
+- Транскрипция → Whisper API или аналог
+- Результат → `raw_text` в records (тот же pipeline далее)
+
+---
+
+## Domain 2: Analysis / Interpretation
+
+### Module 2a: Extraction (AI)
+
+#### User Stories
+- Как система, я хочу распарсить текст и выделить структурированные данные
+- Как пользователь, я хочу увидеть что нашёл AI и отредактировать если нужно
+
+#### Модель данных
+
+```sql
+-- Добавить к таблице records:
+ALTER TABLE records ADD COLUMN extracted_data JSONB;
+ALTER TABLE records ADD COLUMN user_corrections JSONB;  -- правки поверх extraction
+
+-- Структура extracted_data:
 {
-  "done": [
-    { "description": "Implemented payment API", "person": "Bob", "confidence": 0.95 }
-  ],
-  "in_progress": [
-    { "description": "Testing dashboard", "person": "Alice", "deadline": "2024-03-28", "confidence": 0.85 }
-  ],
-  "blockers": [
-    { "description": "Waiting for database schema from DevOps", "impact": "high", "assigned_to": "Charlie" }
-  ],
-  "assignments": [
-    { "person": "Alice", "tasks": ["..."], "by_date": "2024-03-28" }
-  ],
+  "done": [{ "description": "...", "person": "..." }],
+  "in_progress": [{ "description": "...", "person": "...", "deadline": "..." }],
+  "blockers": [{ "description": "...", "impact": "high|medium|low" }],
+  "assignments": [{ "person": "...", "tasks": [...], "by_when": "..." }],
   "deadlines": [
-    { "date": "2024-03-28", "description": "Feature launch", "confidence": 0.9 }
-  ],
-  "confidence_scores": {
-    "overall": 0.87,
-    "notes": "High confidence on done/blockers, medium on deadlines (implicit)"
-  }
-}
-```
-
-### API & Server Actions
-```
-POST /api/extract (internal, called by analyze)
-  Body: { analysis_id, input_text }
-  Response: { success, extracted_data, error? }
-  Calls: Claude Sonnet API with system prompt
-
-POST /api/analyses/:id/corrections (allow user to fix extraction)
-  Body: { field: 'done' | 'blockers' | 'deadlines', corrections: [...] }
-  Response: { updated: true }
-  Status: 200 | 404 | 400
-```
-
-### Экраны & Компоненты
-- **Extraction Results Page**:
-  - Tabs: Done / In-Progress / Blockers / Assignments / Deadlines
-  - Each item: editable card (click to edit, save/cancel buttons)
-  - Confidence badges: "✓ High confidence" / "⚠ Medium (user should verify)"
-- **Edit Mode**:
-  - Inline edit or modal
-  - Save → POST /api/analyses/:id/corrections
-
-### Бизнес-логика
-- Extraction via Claude Sonnet API with structured output (JSON mode)
-- System prompt: "Parse developer updates and extract: done items, in-progress, blockers, assignments, deadlines. Output valid JSON."
-- Confidence scoring: 0.5–1.0 based on keywords and context
-- User corrections: stored as audit trail (editable field in analysis)
-
-### Крайние случаи
-- Текст на смешанном языке (en + ru): auto-detect, process, translate if needed
-- Нет явных дедлайнов: попробовать вывести из контекста ("by Friday", "next sprint")
-- Одна задача -> несколько людей: split на отдельные assignment items
-- Conflicting info (e.g., "done" + "in-progress" same task): flag for user correction
-
----
-
-## Module 4: Report Generation (Weekly / Monthly / KPI Draft / Task List)
-
-### User Stories
-- Как пользователь, я хочу получить недельный отчёт (digest выполненного за неделю)
-- Как пользователь, я хочу получить месячный отчёт с трендами
-- Как пользователь, я хочу видеть KPI draft (productivity, velocity)
-- Как пользователь, я хочу список follow-up tasks
-
-### Модель данных
-```
-reports
-  id: uuid (PK)
-  user_id: uuid (FK users.id)
-  type: text (enum: 'weekly'/'monthly'/'kpi'/'follow_up')
-  period_start: date
-  period_end: date
-  content: jsonb (markdown report)
-  analysis_ids: uuid[] (references to analyses used)
-  created_at: timestamptz
-
-RLS: SELECT/UPDATE/DELETE: auth.uid() = user_id
-```
-
-### API & Server Actions
-```
-POST /api/reports/generate (Server Action)
-  Body: { type: 'weekly' | 'monthly' | 'kpi', period_start, period_end }
-  Response: { id, content }
-  Calls: Claude Opus API with aggregated extraction data
-  Status: 200 | 400 (invalid period) | 401
-
-GET /api/reports/:id
-  Response: { id, type, period_start, period_end, content }
-  Status: 200 | 404 | 401
-
-GET /api/reports
-  Query: ?type=weekly&from=2024-03-01&to=2024-03-31
-  Response: [{ id, type, period_start, period_end, created_at }]
-  Status: 200 | 401
-```
-
-### Экраны & Компоненты
-- **Reports Page**:
-  - Filters: Type (Weekly/Monthly/KPI), Date range
-  - List of reports with date, type, preview
-  - "Generate New Report" button
-- **Report View**:
-  - Full markdown rendered (using react-markdown)
-  - Copy to clipboard button
-  - Export as PDF / DOCX button (future)
-  - Metadata: Generated on [date], based on [N] analyses
-
-### Бизнес-логика
-- **Weekly**: Summary of done/blockers/blockers resolved from last 7 days
-- **Monthly**: Trends (productivity trend chart data), top blockers, team health
-- **KPI Draft**: Velocity (tasks/week), blocker resolution rate, team capacity %
-- **Follow-up**: Open tasks + assignments + blockers needing action
-- Report generation via Claude Opus (more capable for complex analysis)
-
-### Крайние случаи
-- Период пуст (нет analyses): "No data for this period. Add analyses to generate report."
-- User corrections после создания report: не перестраивать автоматически, allow manual re-generation
-- Много analyses в периоде: summarize top 20, note "...and [N] more"
-
----
-
-## Module 5: Technical Translation (Plain Language)
-
-### User Stories
-- Как пользователь (non-technical), я хочу увидеть перевод технического update на нормальный язык
-- Как система, я хочу сохранить точность при упрощении (не потерять важные детали)
-- Как пользователь, я хочу увидеть оба варианта (original + translation) для verify
-
-### Модель данных
-```
-translations (nullable, stored with analysis)
-{
-  "original_text": "Deployed v2.1.3 to staging, need to run DB migrations for new audit table",
-  "translated_text": "We've updated the system to the latest version on our test environment. We need to update the database structure for the new activity logging feature.",
-  "confidence": 0.92,
-  "key_points": [
-    "Version deployed",
-    "Environment: staging (test)",
-    "Action needed: database update",
-    "Reason: enable activity logging"
+    { "date": "...", "description": "...", "type": "explicit" },
+    { "date": "...", "description": "...", "type": "inferred" }
+    -- explicit = прямо сказано; inferred = выведено из контекста
   ]
 }
 ```
 
-### API & Server Actions
+**Важно**: дедлайны выведенные (inferred) должны быть явно помечены — они менее надёжны чем explicit.
+
+#### API
 ```
-POST /api/translate (Server Action, called after extraction)
-  Body: { analysis_id, technical_text: string }
-  Response: { translated_text, key_points, confidence }
-  Calls: Claude Sonnet API
-  Status: 200 | 400 | 401
+(Вызывается как часть createRecord pipeline)
+runExtraction(recordId: string): Promise<void>
+  Читает raw_text
+  Вызывает Claude API (extraction prompt)
+  Сохраняет extracted_data, status='completed'
+  При ошибке: status='failed', error_message
 
-GET /api/analyses/:id/translation
-  Response: { original, translated, key_points, confidence }
-  Status: 200 | 404 | 401
+PATCH /api/records/[id]/corrections
+  Body: { corrections: Partial<ExtractedData> }
+  Сохраняет user_corrections рядом с оригиналом (не перезаписывает)
 ```
 
-### Экраны & Компоненты
-- **Translation View**:
-  - Split panel: Original (left) | Translation (right)
-  - Key points bullet list
-  - Confidence badge
-  - Copy button (for translated text)
-- **Inline in Reports**: Technical updates wrapped with [translation tooltip](hover shows plain version)
+#### Экраны
+- **`/records/[id]`** — результаты
+  - Вкладки: Сделано / В работе / Блокеры / Назначения / Дедлайны
+  - Inline редактирование каждого элемента
+  - Метка "(выведено)" для inferred deadlines
 
-### Бизнес-логика
-- Triggered automatically after extraction (async)
-- System prompt: "Translate this technical update to plain business English. Keep all key info but remove jargon."
-- Key points extraction: bullet list of 3–5 main ideas
-- Confidence: based on ambiguity detection (0.5–1.0)
+### Module 2b: Interpretation (Управленческий разбор)
 
-### Крайние случаи
-- Already plain English text: return original + high confidence (1.0)
-- Mixed languages: translate all to English, note language mix
-- Unclear/ambiguous technical text: lower confidence (0.6–0.7), ask user to clarify
-- Very short text: might not need translation, flag with confidence 0.3
+#### User Stories
+- Как пользователь, я хочу понять что на самом деле происходит — на управленческом языке
+- Как система, я хочу выявить скрытые блокеры и неясности
+- Как система, я хочу подсказать что стоит уточнить у разработчика
+
+#### Модель данных
+
+```sql
+-- Добавить к таблице records:
+ALTER TABLE records ADD COLUMN interpretation JSONB;
+
+-- Структура interpretation:
+{
+  "summary": "Что происходит — 2-3 предложения",
+  "management_view": "Что это значит для менеджера: риски, здоровье задач",
+  "hidden_blockers": ["..."],  -- пустой массив если нет
+  "ambiguities": ["..."],
+  "clarification_questions": ["Уточнить у разработчика: ..."],
+  "real_status": "green|yellow|red"
+}
+```
+
+#### API
+```
+(Вызывается после или вместе с extraction)
+runInterpretation(recordId: string): Promise<void>
+  Input: raw_text + extracted_data (для контекста)
+  Вызывает Claude API (interpretation prompt)
+  Сохраняет в records.interpretation
+```
+
+#### Экраны
+- Отдельная вкладка "Интерпретация" на `/records/[id]`
+  - Summary, Management view, Hidden blockers, Ambiguities, Questions to ask
 
 ---
 
-## Database Schema (Full)
+## Module 3: History & Review
+
+### User Stories
+- Как пользователь, я хочу видеть все прошлые записи
+- Как пользователь, я хочу открыть любую запись
+- Как пользователь, я хочу отметить запись как "просмотрено"
+- Как пользователь, я хочу выбрать несколько записей для генерации отчёта
+
+### Экраны
+- **`/history`** — список записей
+  - Карточки: дата, метка, статус (pending/completed/failed), reviewed/не reviewed
+  - Клик → `/records/[id]`
+  - Checkbox для выбора нескольких (для reports)
+
+### API
+```
+GET /api/records — список с пагинацией
+  Response: [{ id, created_at, status, label, reviewed_at, raw_text_preview }]
+
+PATCH /api/records/[id]
+  Body: { reviewed: true } | { label: "..." }
+```
+
+---
+
+## Domain 3: Reporting
+
+### Module 4: Reports
+
+#### User Stories
+- Как пользователь, я хочу сгенерировать недельный отчёт из нескольких записей
+- Как пользователь, я хочу получить список follow-up задач
+- Как пользователь, я хочу скопировать отчёт
+
+#### Модель данных
 
 ```sql
--- users
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  clerk_id TEXT UNIQUE NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  full_name TEXT,
-  plan TEXT DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'team')),
-  analyses_count_this_month INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- analyses
-CREATE TABLE analyses (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  input_text TEXT NOT NULL,
-  input_length INTEGER,
-  input_language TEXT DEFAULT 'en',
-  status TEXT DEFAULT 'processing' CHECK (status IN ('processing', 'completed', 'failed')),
-  extracted_data JSONB,
-  translations JSONB,
-  error_message TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- reports
 CREATE TABLE reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('weekly', 'monthly', 'kpi', 'follow_up')),
-  period_start DATE NOT NULL,
-  period_end DATE NOT NULL,
-  content JSONB NOT NULL,
-  analysis_ids UUID[],
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  type TEXT NOT NULL CHECK (type IN ('weekly', 'monthly', 'follow_up')),
+  period_start DATE,
+  period_end DATE,
+  content TEXT NOT NULL,  -- markdown
+  source_record_ids UUID[],
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- RLS Policies (all tables)
-CREATE POLICY "users_own_analyses" ON analyses
-  USING (auth.uid()::uuid = user_id);
-CREATE POLICY "users_own_reports" ON reports
-  USING (auth.uid()::uuid = user_id);
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_reports" ON reports USING (auth.uid() = user_id);
+CREATE INDEX idx_reports_user_created ON reports(user_id, created_at DESC);
 ```
+
+#### API
+```
+Server Action: generateReport(params: {
+  type: 'weekly' | 'monthly' | 'follow_up',
+  recordIds: string[],
+  periodStart?: string,
+  periodEnd?: string
+})
+  Читает extracted_data из выбранных records
+  Вызывает Claude API (report generation prompt)
+  Сохраняет в reports
+  Возвращает: { id }
+
+GET /api/reports — список
+GET /api/reports/[id] — один отчёт
+```
+
+#### Экраны
+- **`/reports`** — список + "Generate Report"
+- **`/reports/new`** — выбор записей + тип → generate
+- **`/reports/[id]`** — markdown + Copy button
 
 ---
 
-## Integration Points
+## Future Scope (не в v1)
 
-**Claude API Integration**:
-- Extraction: `POST https://api.anthropic.com/v1/messages` with `model: claude-3-5-sonnet-20241022`
-- Report generation: `POST https://api.anthropic.com/v1/messages` with `model: claude-opus-4-6`
-- Translation: Sonnet model
+### KPI Drafts / Employee KPI Builder
 
-**Clerk Integration**:
-- Auth via Clerk UI component
-- Webhook: `POST /api/auth/callback` to sync user data to Supabase
+Отдельная вкладка для генерации черновиков КИПов сотрудникам.
 
-**Supabase Integration**:
-- `createServerComponentClient` in Server Components
-- `createServerActionClient` in Server Actions
-- RLS enforced at database level
+**Концепция:**
+- Пользователь вводит: шаблон / пример / промпт для конкретного сотрудника
+- AI генерирует черновик КИП по заданному формату
+- Пользователь редактирует и копирует
+
+**Архитектурная готовность для добавления:**
+- Не требует изменений существующих таблиц
+- Отдельная таблица `kpi_drafts` (id, user_id, employee_name, template, content, created_at)
+- Отдельный Claude prompt (другой тип задачи)
+- Новые страницы `/kpi`, `/kpi/new`, `/kpi/[id]`
+
+**Не добавлять в v1.** Зафиксировать как следующий major feature после того как основной pipeline работает.
+
+### Audio/Video Ingestion
+
+Описано выше в Domain 1. Архитектура (поле `source_type`) готова.
 
 ---
 
-## AI Prompts (High-Level)
+## Database Schema (полная для v1)
 
-**Extraction Prompt**:
-```
-System: "You are an expert at parsing developer updates and meetings.
-Extract: done items, in-progress tasks, blockers, team assignments, and deadlines.
-Output valid JSON with structure: { done: [], in_progress: [], blockers: [], assignments: [], deadlines: [] }"
+```sql
+-- records (объединяет ingestion + analysis в одной таблице для v1)
+CREATE TABLE records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  source_type TEXT DEFAULT 'text',
+  raw_text TEXT NOT NULL,
+  label TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+  extracted_data JSONB,
+  user_corrections JSONB,
+  interpretation JSONB,
+  error_message TEXT,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  type TEXT NOT NULL CHECK (type IN ('weekly', 'monthly', 'follow_up')),
+  period_start DATE,
+  period_end DATE,
+  content TEXT NOT NULL,
+  source_record_ids UUID[],
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS
+ALTER TABLE records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_records" ON records USING (auth.uid() = user_id);
+CREATE POLICY "own_reports" ON reports USING (auth.uid() = user_id);
+
+-- Indexes
+CREATE INDEX idx_records_user_created ON records(user_id, created_at DESC);
+CREATE INDEX idx_reports_user_created ON reports(user_id, created_at DESC);
 ```
 
-**Report Generation Prompt**:
-```
-System: "You are a business analyst. Convert developer updates into clear reports.
-Create a [weekly/monthly/kpi] report summarizing: completed work, blockers, team productivity, and next steps.
-Output in markdown."
+**Примечание**: `ON DELETE` поведение для user → records/reports — решать явно. Для internal tool с одним пользователем удаление пользователя маловероятно; если нужно, добавить в отдельную миграцию.
+
+---
+
+## Claude API Integration
+
+```typescript
+// Официальный SDK, не raw fetch
+import Anthropic from '@anthropic-ai/sdk';
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Модели — через env, не хардкожить ID
+// CLAUDE_EXTRACTION_MODEL=claude-sonnet-4-6
+// CLAUDE_REPORT_MODEL=claude-sonnet-4-6
 ```
 
-**Translation Prompt**:
-```
-System: "Translate technical jargon to plain business English. Keep all key information.
-Provide: translated text, and 3-5 key points for non-technical reader."
-```
+Финальные промпты — в `.claude/agents/ai-agent-architect.md`.

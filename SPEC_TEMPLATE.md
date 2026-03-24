@@ -1,160 +1,132 @@
 # SPEC_TEMPLATE.md — Feature Specification Template
 
-Copy this for every new feature. Fill all 8 sections. No TODOs or "TBD".
+Использовать для каждой новой фичи. Заполнять все разделы. Не оставлять TODO.
 
 ---
 
-# Спецификация фичи: [FEATURE NAME]
+# Спецификация: [НАЗВАНИЕ ФИЧИ]
 
 ## 1. Описание
 
-**Что это делает**: [1–2 предложения о том что пользователь может сделать]
+**Что делает**: [1–2 предложения — что пользователь может сделать]
 
-**Для кого**: [кто будет использовать]
+**Для кого**: [кто будет использовать, в каком контексте]
 
-**Зачем**: [проблема которую решаем]
+**Зачем**: [какую проблему решает]
 
-**Пример сценария**: [конкретный сценарий использования]
+**Пример сценария**: [конкретный пример использования]
 
 ---
 
 ## 2. User Stories
 
-Список историй в формате "Как [роль], я хочу [действие], чтобы [результат]".
+- Как [роль], я хочу [действие], чтобы [результат]
+- Как [роль], я хочу [действие], чтобы [результат]
 
-- Как пользователь, я хочу [действие], чтобы [результат]
-- Как пользователь, я хочу [действие], чтобы [результат]
-- Как система, я хочу [действие], чтобы [результат]
-
-Минимум 3 истории. Включи основной сценарий и крайние случаи.
+Минимум 2–3 истории. Покрыть основной сценарий и ключевые крайние случаи.
 
 ---
 
 ## 3. Модель данных
 
-**Новые таблицы или columns**:
+**Новые таблицы** (если нужны):
 
+```sql
+CREATE TABLE table_name (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  -- поля
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_rows" ON table_name USING (auth.uid() = user_id);
+-- Indexes: добавить на поля в WHERE и ORDER BY
 ```
-table_name
-  id: uuid (PK)
-  user_id: uuid (FK users.id)
-  field_name: type (constraints)
-  created_at: timestamptz
 
-RLS: SELECT/UPDATE: auth.uid() = user_id
-Indexes: (user_id, created_at)
+**Изменения в существующих таблицах** (если есть):
+
+```sql
+ALTER TABLE existing_table ADD COLUMN new_column TYPE;
 ```
 
-**Изменения в существующих таблицах**: (если есть)
+**Примечание**: ON DELETE CASCADE — добавлять осознанно, не как дефолт.
 
 ---
 
 ## 4. API / Server Actions
 
-**Endpoints или Server Actions**:
-
 ```
-POST /api/feature
-  Body: { param1: type, param2: type }
-  Response: { id, status, data }
-  Status codes: 200 | 400 | 401 | 404 | 429 | 500
-  Rate limit: X requests per minute
+Server Action: actionName(params)
+  Вход: { param: type }
+  Валидация: [что проверяется]
+  Логика: [что делает]
+  Возврат: { result } | { error }
 
-GET /api/feature/:id
-  Response: { id, ... }
-  Status: 200 | 404 | 401
+-- или --
+
+POST /api/endpoint
+  Body: { param: type }
+  Response: { ... }
+  Status codes: 200 | 400 | 401 | 404 | 500
 ```
 
-Или для Server Actions:
-
-```
-'use server'
-export async function featureAction(data: { param1, param2 })
-  Return: { success, data, error? }
-```
+Указать status codes только те, которые реально используются.
 
 ---
 
 ## 5. Экраны и компоненты
 
 **Страницы**:
-- `/path` — название, описание, когда видна
+- `/path` — что отображает, когда видна
 
-**Компоненты**:
-- ComponentName — что отображает, states (loading/empty/error/success), actions
+**Компоненты** (для сложных, с состояниями):
+- `ComponentName` — что отображает
+  - loading: [что показываем]
+  - empty: [что показываем]
+  - error: [что показываем]
+  - success: [что показываем]
 
-**States для каждого компонента**:
-- **loading**: спиннер
-- **empty**: "No data. [action to create]"
-- **error**: красная alert с сообщением
-- **success**: данные отображены, можно действовать
+Простые компоненты без состояний — не нужно расписывать все 4 state.
 
 ---
 
 ## 6. Бизнес-логика
 
-**Правила валидации**:
-- Min/max length, format, required fields
-- Примеры: "text min 10 words, max 100k chars"
+**Валидация**:
+- [поле]: [правило] — например, "input: непустой, max ~50k символов"
+- Конкретные лимиты уточнять по опыту, не хардкодить без причины
 
-**Ограничения**:
-- Rate limits, quotas, permissions
-- Примеры: "10 analyses per minute per user"
-
-**Формулы** (если есть):
-- Как считаются значения (confidence score, velocity, etc.)
-
-**Условия переходов** (если есть):
-- Когда status меняется с processing → completed
+**Правила**:
+- [что и при каком условии происходит]
 
 ---
 
-## 7. Крайние случаи (Edge Cases)
+## 7. Edge Cases
 
 | Сценарий | Ожидаемое поведение |
 |----------|-------------------|
-| Пользователь не авторизован | Показать 401 error |
-| Текст пустой | Валидационная ошибка "min 10 words" |
-| API не отвечает | Retry с exponential backoff, then graceful error |
-| Rate limit exceeded | 429 status, "Try again in 1 minute" |
-| Одновременные updates | Transactional lock, last-write-wins |
+| Не авторизован | Редирект на /login |
+| Пустой input | Validation error, не отправлять |
+| AI API не отвечает | Показать meaningful error, не crash |
+| [специфичный для фичи] | [поведение] |
 
 ---
 
 ## 8. Приоритет и зависимости
 
-**Приоритет**: (Critical / High / Medium / Low)
+**Приоритет**: Critical / High / Medium / Low
 
-**Зависимости** (что должно быть готово до этого):
-- Feature X (must be done before)
-- Feature Y (nice to have before)
+**Зависит от**: [что должно быть готово]
 
-**Blocked by** (если что-то блокирует):
-- [Issue](link)
+**Блокирует**: [что нельзя делать без этой фичи]
 
 ---
 
-## Acceptance Criteria
+## Acceptance Criteria (MVP уровень)
 
-Фича ready to merge когда:
-- [ ] Спека заполнена полностью (все 8 разделов)
-- [ ] Код написан (vertical slice: данные + API + UI)
-- [ ] Тесты написаны (API + critical logic)
-- [ ] Code review passed (qa-reviewer)
-- [ ] PostHog события добавлены
-- [ ] Sentry обработка ошибок
-- [ ] Vercel preview работает
-- [ ] DEFINITION_OF_DONE все 8 пунктов
-
----
-
-## Timeline
-
-**Estimated**: 4–8 часов
-
-**Breakdown**:
-- Database: 1 hour
-- API: 2 hours
-- UI: 2 hours
-- Tests: 1 hour
-- Review: 1 hour
+- [ ] Спека заполнена
+- [ ] Vertical slice: DB (если нужно) + API/Action + UI
+- [ ] Тест на критическую логику
+- [ ] Code review (qa-reviewer)
+- [ ] `.env.example` обновлён (если новые переменные)

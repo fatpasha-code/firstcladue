@@ -1,62 +1,37 @@
-# ADR-002: Supabase as Backend Database
+# ADR-002: Supabase как база данных и auth
 
-## Decision
+**Дата**: 2026-03-24
+**Статус**: Accepted
 
-Use **Supabase (PostgreSQL)** as the primary backend (not Firebase, not MongoDB, not DynamoDB).
+## Решение
 
-## Context
+Использовать Supabase (PostgreSQL + встроенный Auth) как основной backend.
 
-Need to pick database + backend infrastructure. Candidates:
-- Supabase (Postgres + Auth + Storage)
-- Firebase (Firestore + Auth + Realtime)
-- MongoDB Atlas
-- DynamoDB (AWS)
+## Контекст
 
-## Rationale
+Нужен database + auth для internal tool. Один пользователь на MVP.
 
-**Supabase wins because**:
-1. **PostgreSQL** → structured data (users, analyses, reports), ACID compliance, RLS for security
-2. **Built-in Auth** → Clerk integrates cleanly via webhooks
-3. **Row-Level Security (RLS)** → enforced at DB level, not application level (safer)
-4. **Vector/JSONB support** → future-proof for AI embeddings + unstructured data
-5. **Edge Functions** → deploy functions near database, low latency
-6. **Price** → generous free tier, $25/month for production
-7. **Developer experience** → SQL-native (vs Firebase's query limitations)
-8. **Data portability** → standard PostgreSQL, can migrate if needed
+## Причины
 
-**Why not Firebase?**:
-- Limited SQL capabilities
-- Auth less flexible (Clerk integration awkward)
-- NoSQL pricing scales unpredictably with reads
+1. **PostgreSQL** — структурированные данные, ACID, JSONB для неструктурированного (extracted_data)
+2. **Row-Level Security (RLS)** — безопасность на уровне БД, не приложения
+3. **Встроенный Auth** — Supabase Auth покрывает потребности MVP без внешних сервисов
+4. **Миграции** — стандартный SQL, понятный инструментарий
+5. **Цена** — generous free tier для internal tool
+6. **Портируемость данных** — стандартный PostgreSQL, можно мигрировать если нужно
 
-**Why not MongoDB**?:
-- JSONB/RLS not as strong as Postgres
-- No built-in auth
-- Worse for relational data (users ↔ analyses ↔ reports)
+## Про Auth
 
-**Why not DynamoDB**?:
-- AWS lock-in
-- Requires separate Cognito or external auth
-- Complex pricing model
+Для internal MVP: Supabase Auth достаточен (email/password или magic link).
+Clerk или другой провайдер — только если появятся требования которые Supabase Auth не покрывает.
 
-## Consequences
+## Альтернативы
 
-**Positive**:
-- RLS provides security at database level
-- SQL is familiar to most developers
-- Future AI features (embeddings, vectors) easier
-- Easy to write migrations and rollbacks
+- **Firebase**: NoSQL, меньше гибкости, auth менее гибкий
+- **MongoDB**: нет встроенного auth и RLS, хуже для реляционных данных
+- **PlanetScale / Neon**: хорошие Postgres варианты, но Supabase даёт больше из коробки
 
-**Negative**:
-- Need to manage migrations (not automatic schema updates)
-- Requires understanding of PostgreSQL (but worth learning)
-- N+1 query problems if not careful (mitigated by good ORM)
+## Ограничения
 
-## Status
-
-**ACCEPTED** — Supabase will be primary database
-
----
-
-Date: 2024-03-24
-Decided by: Pavel + database-architect
+- Нужно понимать миграции и SQL
+- RLS требует внимания при проектировании схемы

@@ -1,66 +1,90 @@
 # Rule: API Routes & Server Actions
 
-**Glob**: `src/app/api/**`, `src/app/**/actions.ts`
+**Glob**: `src/app/api/**`, `src/app/**/actions.ts`, `src/app/**/actions/**`
 
 ## Правило
 
-Все API endpoints и Server Actions должны иметь error handling, input validation и правильные status codes.
+Все API endpoints и Server Actions должны иметь input validation, error handling и правильные status codes.
 
-## Детали
+## Input Validation
 
-### Input Validation (на входе)
 ```typescript
-// ✓ Good
-if (!text || text.length < 10) {
-  return Response.json({ error: 'Text too short' }, { status: 400 });
+// ✓ Good — валидация на входе, до логики
+if (!text || text.trim().length === 0) {
+  return Response.json({ error: 'Text is required' }, { status: 400 });
 }
 
-// ✗ Bad
-const analysis = await extractText(text); // no validation
+// ✗ Bad — нет валидации
+const result = await processText(text);
 ```
 
-### Status Codes
+## Status Codes
+
 - `200` — успех
-- `400` — плохой request (validation error)
-- `401` — не авторизован
+- `400` — validation error (плохой request)
+- `401` — не авторизован (нет сессии / невалидный токен)
+- `403` — авторизован, но нет доступа к этому ресурсу (другой пользователь и т.п.)
 - `404` — не найдено
-- `429` — rate limit exceeded
 - `500` — server error
 
-### Error Handling
+Использовать только те, которые реально возникают. Различай 401 и 403 — это разные случаи.
+Rate-limit 429 — добавлять если нужен.
+
+## Стандартный формат ошибок
+
+```typescript
+// ✓ Good — единый формат
+return Response.json({
+  error: {
+    code: 'VALIDATION_ERROR',     // machine-readable код
+    message: 'Text is required'   // human-readable, не internal details
+  }
+}, { status: 400 });
+
+// ✗ Bad — internal details утекают
+return Response.json({ error: error.stack }, { status: 500 });
+```
+
+Правило: `message` — то что можно показать пользователю. `code` — для debugging на клиенте.
+Не возвращать stack traces, internal class names, DB error messages.
+
+## Error Handling
+
 ```typescript
 try {
-  // logic
+  // логика
 } catch (error) {
-  console.error('Error:', error);
-  return Response.json({ error: 'Internal error' }, { status: 500 });
+  console.error('[endpoint-name] error:', error);  // для server logs
+  return Response.json({
+    error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' }
+  }, { status: 500 });
 }
 ```
 
-### Rate Limiting
-- Analyze endpoint: 10 requests/minute per user
-- Check before processing, return 429 if exceeded
+## Claude API Calls
 
-### Claude API Calls
-- Всегда логируй call и response
+- Использовать официальный `@anthropic-ai/sdk` (не raw fetch)
 - Retry с exponential backoff
-- Graceful degradation если API fails
+- **Не логировать содержимое запросов** (user data) — только ошибки и latency
+- Graceful degradation если API недоступен
 
 ## Обязательно
 
-- ✓ Input validation на входе (не на выходе)
-- ✓ Error try/catch (не crash)
-- ✓ Правильные status codes
-- ✓ Rate limiting проверена
-- ✓ Логирование для debugging
-- ✓ Tests для critical logic
-- ✓ Env variables в .env.example (не в repo)
+- ✓ Валидация на входе (первым делом)
+- ✓ try/catch везде
+- ✓ Правильные status codes (400 ≠ 500)
+- ✓ Нет hardcoded API keys
+- ✓ Env variables в `.env.example`
+- ✓ Тест для critical logic (extraction, parsing)
 
-## Когда говорить "NO"
+## Rate Limiting
 
-- "No input validation"
-- "Status code 500 for validation error (should be 400)"
-- "Rate limit not checked before Claude API call"
-- "No error handling (missing try/catch)"
-- "Hardcoded API key in code"
-- "No test for critical extraction logic"
+Для internal MVP (один пользователь) rate limiting не нужен. Добавлять если/когда продукт станет multi-user.
+
+## Говорить "NO" когда
+
+- Нет input validation
+- Validation error возвращает 500 (должен 400)
+- API key hardcoded в коде
+- Нет error handling (нет try/catch)
+- Логируется содержимое AI ответа с user data

@@ -1,76 +1,54 @@
 # Skill: Implement Feature (Vertical Slice)
 
-Используй этот скилл когда нужно добавить новую фичу с полным вертикальным слайсом.
+Использовать когда нужно реализовать фичу полным вертикальным слайсом.
 
 ## Процесс
 
-1. **Прочитай спеку** → SPEC_TEMPLATE.md или TECH_SPEC.md
-2. **Разложи на слайсы** → 2–4 слайса (данные → API → UI → тесты)
-3. **Создай миграцию** → database-architect
-4. **Создай API** → backend-engineer
-5. **Создай UI** → frontend-developer
-6. **Добавь тесты** → backend-engineer
-7. **Code review** → qa-reviewer
-8. **Merge & deploy** → Vercel preview
+1. **Прочитать спеку** → найти фичу в TECH_SPEC.md или SPEC_TEMPLATE.md
+2. **Убедиться что спека полная** → если нет — сначала дополнить
+3. **Декомпозировать на слайсы** → planner разбивает на 2–4 слайса
+4. **Создать миграцию** (если нужна БД) → database-architect
+5. **Создать API / Server Action** → backend-engineer
+6. **Создать UI** → frontend-developer
+7. **Добавить тесты** для критической логики → backend-engineer
+8. **Code review** → qa-reviewer
 
-## Шаблон для Proposal
+## Шаблон плана (пример структуры)
+
+Включать только нужные слайсы. Не каждая фича — полный стек.
 
 ```markdown
-## Feature: [Name]
+## Feature: [Название]
 
-### Слайсы (в порядке)
+### Open questions (если спека неполная)
+- [Вопрос 1]
 
-1. **Database** (database-architect)
-   - Create table `analyses` with columns: id, user_id, input_text, status
-   - Add RLS policy: users see own analyses only
-   - Create indexes on (user_id, created_at)
+### Слайс 1: Database — (только если меняется схема)
+- Что меняется, файл миграции, RLS если нужен
 
-2. **API** (backend-engineer)
-   - POST /api/analyze — accept text, return { id, status }
-   - GET /api/analyses/:id/status — return status
-   - Validate: min 10 words, max 100k chars
-   - Rate limit: 10/minute per user
+### Слайс 2: Backend — (только если меняется логика)
+- Server Action или API route, валидация, что возвращает
 
-3. **UI** (frontend-developer)
-   - Page: /analyze with textarea
-   - States: empty → loading → success/error
-   - Form submit → Server Action → POST /api/analyze
-   - Show result on /analyses/:id
+### Слайс 3: UI — (только если меняется интерфейс)
+- Страница/компонент, states если async
 
-4. **Tests** (backend-engineer)
-   - Unit: extraction logic (input → JSON)
-   - Integration: POST /api/analyze → DB saved
-   - Edge cases: empty text, rate limit, API failure
+### Tests — (только для critical logic)
+- Что и каким тестом
+```
 
-5. **Analytics** (backend-engineer)
-   - PostHog event: analysis_created { length, language }
-   - Sentry: log errors
+## Acceptance Criteria (MVP уровень)
 
-### Acceptance Criteria
-- [ ] Text min 10 words validated
-- [ ] Rate limit enforced (10/minute)
-- [ ] Results saved to DB
-- [ ] UI shows loading/error/success states
-- [ ] Tests pass
-- [ ] Vercel preview works
-
-### Timeline
-- Database: 30 min
-- API: 1 hour
-- UI: 1 hour
-- Tests: 30 min
-- Review: 30 min
-Total: ~4 hours (1 day)
+```
+- [ ] Спека заполнена
+- [ ] Только нужные слои реализованы (не обязательно DB + API + UI)
+- [ ] Тест на критическую логику (если есть)
+- [ ] Code review (qa-reviewer) прошёл
+- [ ] .env.example обновлён (если новые env vars)
+- [ ] Если реализация отличалась от спеки — расхождение зафиксировано и спека обновлена
 ```
 
 ## Когда использовать
 
-- Новая фича из roadmap
-- Refactoring big task на слайсы
-- Planning meeting (что делать на неделю)
-
-## Tips
-
-- Всегда спрашивай себя: "Что юзер видит? Что сохраняется в БД? Какой API вызывается?"
-- Если слайс >2 часов → разбей ещё меньше
-- Parallel: UI + API могут работать одновременно (с mock API)
+- Новая фича из TECH_SPEC.md
+- Большая задача которую нужно разбить на части
+- Нужно понять порядок работы перед началом

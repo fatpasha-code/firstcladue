@@ -1,170 +1,124 @@
-# CLAUDE.md — DevSync Configuration
+# CLAUDE.md — Update Tracker (Внутренний инструмент)
 
-## Project Overview
+## Что это
 
-**DevSync**: AI tool that parses developer updates (calls/chats/notes) and generates structured reports
-(done/blockers/assignments/deadlines) + business-friendly translations of technical updates.
+Внутренний инструмент для Павла: принимает текст созвонов / переписок / заметок и превращает их в управленческие артефакты.
 
-**Problem**: Non-technical managers spend 2–3 hours/week manually parsing dev updates.
-**Solution**: Paste text → AI extracts structure → generates reports (weekly/monthly/KPI) in minutes.
-
-**Target**: Indie managers, tech leads, consultants. Freemium SaaS model.
+**Текущий этап**: internal MVP, один пользователь (Павел).
+**Не является**: публичным SaaS, коммерческим продуктом, freemium-сервисом.
+**Будущее**: может вырасти в продукт — но сейчас всё решения принимаются под single-user MVP.
 
 ---
 
-## Tech Stack
+## Что делает
 
-- **Frontend**: Next.js 14 (App Router) + Tailwind CSS + shadcn/ui
-- **Backend**: Supabase (PostgreSQL) + Vercel Edge Functions
-- **Auth**: Clerk
-- **Deploy**: Vercel (preview deployments per commit)
-- **AI**: Claude API (sonnet-3-5 for extraction/translation, opus-4-6 for reports)
-- **Payments**: CloudPayments (Russia) / Stripe (global)
-- **Observability**: PostHog + Sentry + Clarity (v1.1+)
-- **MCP Required**: Context7, Supabase, GitHub
-
----
-
-## Architecture
-
-**5 Modules**:
-1. **Auth** (Clerk): User signup/login, plan management
-2. **Input** (Frontend): Paste text, validation, preprocessing
-3. **Extraction** (Claude Sonnet): Parse text → JSON (done/blockers/deadlines/assignments)
-4. **Reports** (Claude Opus): Weekly/monthly/KPI/follow-up reports from extracted data
-5. **Translation** (Claude Sonnet): Technical → plain business English
-
-**Data flow**: User text → Claude API → Supabase → Reports → Export
+1. Принимает текст (созвон, переписка, заметки)
+2. Выделяет: что сделано / в работе / блокеры / кому что / дедлайны
+3. Генерирует: недельный отчёт, месячный, follow-up список
+4. Делает управленческую интерпретацию технических апдейтов:
+   - объясняет что на самом деле происходит
+   - выявляет скрытые блокеры и неясности
+   - подсказывает что нужно уточнить
 
 ---
 
-## Team & Agents
+## Стек
 
-**6 Specialized AI Agents** (all read Context7 + Supabase docs):
+- **Frontend**: Next.js (App Router) + Tailwind CSS + shadcn/ui
+  - После инициализации проекта зафиксировать конкретную версию в `package.json`. Не держать версию плавающей. Обновлять сознательно.
+- **Backend**: Supabase (PostgreSQL + встроенная Auth)
+- **Auth**: Supabase Auth (для MVP достаточно; Clerk — опция для будущего)
+- **Deploy**: Vercel
+- **AI**: Anthropic SDK — модели выбираются по задаче, не захардкожены (см. ai-agent-architect)
+- **MCP**: Context7, Supabase (для документации во время разработки)
 
-| Agent | Model | Focus |
-|-------|-------|-------|
-| `planner` | sonnet | Task decomposition, vertical slices, change proposals |
-| `database-architect` | opus | Schema design, migrations, RLS, indexes |
-| `backend-engineer` | opus | API routes, Server Actions, Claude integration |
-| `frontend-developer` | sonnet | UI/components, forms, state, accessibility |
-| `qa-reviewer` | sonnet | **READ-ONLY**: code review, tests, security (no Write/Edit) |
-| `ai-agent-architect` | opus | Prompt engineering, extraction logic, reliability |
-
----
-
-## Key Rules
-
-**Database** (`supabase/migrations/**`):
-- All DB changes through migrations only
-- Every migration must include rollback plan
-- RLS mandatory on all tables
-- Index strategy: id (PK), user_id (FK), created_at (ts)
-
-**API** (`src/app/api/**`):
-- TDD on: extraction logic, rate limiting, payment validation
-- Error codes: 200, 400 (bad request), 401 (auth), 404, 429 (rate limit), 500
-- Input validation: min 10 words, max 100k chars
-- Rate limit: 10 analyses/minute per user
-
-**Frontend** (`src/app/**/*.tsx`):
-- States: loading/empty/error/success (for each component)
-- shadcn/ui for all UI
-- Server Components by default, use 'use client' sparingly
-- 2-3 hours/week → 15-20 min with tool = measure of success
+Платёжки, product analytics, observability — **future/optional**, не часть v1.
 
 ---
 
-## Coding Principles
+## Архитектура (6 модулей)
 
-**Vertical Slices**: One feature → data + API + UI + analytics + tests (not backend-first, not frontend-first).
-
-**TDD Selective**: Write tests for API, critical business rules, payments, integrations. Not on every UI component.
-
-**Code Review**: After each feature, run:
-- **Vertical review**: End-to-end path (user action → DB → response → render)
-- **Horizontal review**: Consistency in error handling, logging, validation across similar zones
-
-**Hooks Mandatory**:
-- Pre-commit: lint + format (Prettier)
-- Pre-push: all tests pass
-- Pre-release: env/secrets check (no .env.local in git, verify Supabase keys)
+1. **Auth**: логин, защита страниц
+2. **Input**: вставка текста, валидация
+3. **Extraction**: Claude API → JSON (done/blockers/deadlines/assignments)
+4. **Interpretation**: управленческий разбор технических апдейтов
+5. **Reports**: недельный / месячный / follow-up из accumulated extractions
+6. **History & Review**: история анализов, просмотр, редактирование, использование для отчётов
 
 ---
 
-## Process: Idea → Shipped
+## Агенты
 
-1. **Discovery**: Describe change, capture in PROJECT_IDEA.md or ADR
-2. **Spec**: Use SPEC_TEMPLATE.md, fill all 8 sections, no TODOs
-3. **OpenSpec**: Propose → Apply → Verify → Archive (change management)
-4. **GSD**: GSD tool owns artifacts (source of truth)
-5. **Config**: MCP + platform ready (Supabase/Vercel/Clerk/payments)
-6. **Build**: Vertical slices + vertical+horizontal reviews + TDD where needed
-7. **Observability**: PostHog events, Sentry errors, preview deploy checks
-8. **Release**: Merge main + production deploy
-9. **Iterate**: Real data → new changes
+| Агент | Модель | Фокус |
+|-------|--------|-------|
+| `planner` | sonnet | Декомпозиция фич на вертикальные слайсы |
+| `database-architect` | opus | Схема, миграции, RLS |
+| `backend-engineer` | opus | API routes, Server Actions, Claude интеграция |
+| `frontend-developer` | sonnet | UI, компоненты, формы |
+| `qa-reviewer` | sonnet | **READ-ONLY**: review, тесты, безопасность |
+| `ai-agent-architect` | opus | Промпты, AI пайплайны, надёжность |
+
+---
+
+## Ключевые правила
+
+**Процесс**: не кодировать без прочитанной спеки. Если спека не найдена — запросить или создать.
+
+**БД**: все изменения схемы только через миграции. У каждой миграции должен быть rollback plan — не обязательно literal `DOWN`, но способ откатить изменение должен быть известен до применения.
+
+**API**: валидация на входе, правильные status codes, try/catch везде.
+
+**Frontend**: Server Components по умолчанию. 4-state pattern (loading/empty/error/success) для интерактивных компонентов.
+
+**TDD**: тесты для API, критической логики, интеграций. Не для каждого UI-компонента.
+
+---
+
+## Процесс: идея → shipped
+
+1. **Discovery**: описать задачу, зафиксировать в PROJECT_IDEA.md или ADR
+2. **Spec**: SPEC_TEMPLATE.md, заполнить все разделы
+3. **OpenSpec**: propose → apply → verify → archive
+4. **GSD**: процессный слой поверх документов. Source of truth — PROJECT_IDEA.md, TECH_SPEC.md, SPEC_TEMPLATE.md, change docs. GSD помогает по этой правде работать, а не хранит её.
+5. **Platform**: Supabase + Vercel + env vars (один раз в начале)
+6. **Build**: вертикальные слайсы + vertical/horizontal reviews
+7. **Release**: merge в main → deploy
+8. **Iterate**: использование → новые изменения
 
 ---
 
 ## Definition of Done
 
-Feature is "done" ONLY if all 8 are true:
-- [ ] Spec filled (SPEC_TEMPLATE.md)
-- [ ] Code written & tested (vertical slice: data+API+UI+tests)
-- [ ] Tests pass (API + business logic)
-- [ ] PostHog analytics events added
-- [ ] Sentry error handling in place
-- [ ] Code reviewed by qa-reviewer
-- [ ] Preview deploy verified on Vercel
-- [ ] `.env.example` updated, secrets policy followed
+**MVP уровень** (минимум для merge):
+- [ ] Спека написана
+- [ ] Код работает (vertical slice)
+- [ ] Тесты на критическую логику
+- [ ] Code review (qa-reviewer)
+- [ ] `.env.example` обновлён
+
+**Production уровень** (перед публичным деплоем, если продукт вырастет):
+- [ ] Всё из MVP
+- [ ] Error tracking настроен
+- [ ] Analytics события добавлены
+- [ ] Preview deploy проверен
 
 ---
 
-## Commands
+## Метрики успеха (для internal MVP)
+
+- Еженедельный отчёт генерируется за <2 минут
+- Extraction полезна после ручной проверки
+- Меньше времени на составление отчётов
+- Управленческая интерпретация понятна без чтения исходника
+- Регулярное использование самим Павлом
+
+---
+
+## Команды
 
 ```bash
-# Dev
-npm run dev                  # Next.js dev server
-
-# Database
-npx supabase db list        # List migrations
-npx supabase migrations new # Create migration
-
-# Deploy
-git push origin main        # Auto-deploys to Vercel preview
-git merge main              # Deploys to production (after review)
-
-# AI Agents
-# (Invoked via Claude Code UI, use SPEC_TEMPLATE.md to describe features)
+npm run dev           # Next.js dev server
+npm run test          # Тесты
+npm run lint          # Lint
+npx supabase migration new <name>  # Новая миграция
 ```
-
----
-
-## Contact & Decisions
-
-**Product Owner**: Pavel (user)
-**Architecture Owner**: Database-architect + Backend-engineer agents
-**Tech Decisions**: Recorded in ADR/ folder
-
----
-
-## Metrics (MVP Success Criteria)
-
-- 5+ beta users with >1 analysis each
-- Extraction accuracy >80% (user validation)
-- Time-to-report <2 min from paste
-- NPS >40
-- Cost per extraction <$0.10
-
----
-
-## Next Steps
-
-1. Create .claude/agents/ (6 agent files)
-2. Create .claude/rules/ (3 rule files)
-3. Create .claude/skills/ (3 skill files)
-4. Create SPEC_TEMPLATE.md, DEFINITION_OF_DONE.md, CODING_PROCESS.md
-5. Create ADR/ with first 3 architecture decisions
-6. Initialize Supabase project + GitHub repo
-7. Connect GSD as source of truth
-8. Begin build loop (features as vertical slices)

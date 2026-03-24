@@ -4,88 +4,98 @@
 
 ## Правило
 
-Все компоненты должны иметь 4 состояния (loading/empty/error/success) и использовать shadcn/ui.
+Server Components по умолчанию, `use client` только для interactivity. TypeScript: `any` редкий и обоснованный.
 
-## Детали
+## Server Components — дефолт
 
-### 4 States Pattern
+```typescript
+// ✓ Default — Server Component
+export default async function AnalysisPage({ params }: { params: { id: string } }) {
+  const data = await getAnalysis(params.id);
+  return <AnalysisView data={data} />;
+}
+
+// Только если нужна interactivity:
+'use client'
+export function AnalyzeForm() { /* state, events */ }
+```
+
+## 4-State Pattern
+
+Применять для компонентов которые загружают данные или ждут API ответа:
+
 ```typescript
 if (loading) return <Skeleton />;
 if (error) return <Alert variant="destructive">{error}</Alert>;
-if (empty) return <p>No data. {action}</p>;
-return <Success>{data}</Success>;
+if (!data || data.length === 0) return <p className="text-muted-foreground">Нет данных.</p>;
+return <Content data={data} />;
 ```
 
-### shadcn/ui Only
+Не применять к: статическим элементам, простым кнопкам, layout компонентам.
+
+## UI библиотека и референсы
+
+- **shadcn/ui** — базовая библиотека проекта: Button, Input, Card, Textarea, Alert и т.д.
+- **21st.dev** — референс современных UI-паттернов, layout и interaction ideas
+- **uibits.co** — visual inspiration
+
+shadcn/ui предпочтителен для стандартных элементов. Если не подходит — использовать подходящее решение.
+
+## Читаемость JSX
+
+- Не делать компоненты-простыни (200+ строк JSX)
+- Выносить повторяющиеся блоки в отдельные компоненты
+- Страница = orchestration; компоненты = presentation
+- Если JSX трудно читается — сигнал декомпозировать
+
+## Forms → Server Actions
+
 ```typescript
 // ✓ Good
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-
-// ✗ Bad
-<button className="custom-btn">...</button> // самописное
-```
-
-### Server Components
-```typescript
-// ✓ Default (no 'use client')
-export default async function DashboardPage() {
-  const data = await fetchData();
-  return <DashboardContent data={data} />;
-}
-
-// ✗ Bad (unless needed)
-'use client'; // avoid if not necessary
-```
-
-### Forms → Server Actions
-```typescript
-// ✓ Good
-import { analyzeText } from '@/app/actions';
+'use client'
+import { submitAnalysis } from '@/app/actions';
 
 export function AnalyzeForm() {
-  return (
-    <form action={analyzeText}>
-      <input name="text" />
-    </form>
-  );
+  const handleSubmit = async () => {
+    const result = await submitAnalysis(text);
+  };
 }
 
-// ✗ Bad
-const [data, setData] = useState(null);
-fetch('/api/analyze', { method: 'POST', body }); // use Server Action instead
+// ✗ Bad для этого проекта
+fetch('/api/analyze', { method: 'POST', body: JSON.stringify({ text }) });
 ```
 
-### Accessibility
+## Accessibility
+
 ```typescript
 // ✓ Good
-<input
-  aria-label="Paste text to analyze"
-  placeholder="Paste call transcript..."
-/>
+<Textarea aria-label="Текст для анализа" placeholder="Вставьте текст..." />
+<button type="button">Анализировать</button>  // не <div onClick>
 
 // ✗ Bad
-<input /> // no label
+<input />  // без label
+<div onClick={handleClick}>Click me</div>  // не keyboard-accessible
 ```
+
+- ARIA labels на inputs без видимого label
+- Semantic HTML: `<button>` не `<div onClick>`, `<nav>` не `<div>`
+- Visible focus indicator (не убирать outline без замены)
+- Keyboard reachability: основные действия доступны с клавиатуры
 
 ## Обязательно
 
-- ✓ Все UI из shadcn/ui
-- ✓ 4 states (loading/empty/error/success) на каждом complex component
-- ✓ Server Components по умолчанию
-- ✓ 'use client' только для interactivity
-- ✓ TypeScript (no `any`)
-- ✓ Forms используют Server Actions
-- ✓ Responsive (mobile works)
-- ✓ Semantic HTML
-- ✓ ARIA labels на inputs
+- ✓ Server Components где нет интерактивности
+- ✓ TypeScript: `any` редкий и обоснованный
+- ✓ ARIA labels на inputs без visible label
+- ✓ Semantic HTML (button, nav, main и т.д.)
+- ✓ 4-state pattern для async компонентов
+- ✓ Server Actions для form submit
+- ✓ Читаемый JSX — нет простыней
 
-## Когда говорить "NO"
+## Говорить "NO" когда
 
-- "Custom button instead of shadcn/ui Button"
-- "No loading state while fetching"
-- "Component uses fetch() instead of Server Action"
-- "No error state if API fails"
-- "Missing ARIA label on input"
-- "Not responsive on mobile"
-- "Using any in TypeScript"
+- Нет loading state при async операции
+- Validation error не отображается пользователю
+- `<div onClick>` вместо `<button>` без причины
+- Нет ARIA label на input без visible label
+- `use client` на странице которая не требует interactivity

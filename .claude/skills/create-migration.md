@@ -1,107 +1,80 @@
 # Skill: Create Database Migration
 
-Используй этот скилл для создания SQL миграций.
+Использовать для любых изменений схемы БД.
 
 ## Процесс
 
-1. Определи что нужно сделать (новая таблица, новый column, индекс, RLS policy)
-2. Создай файл: `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
-3. Напиши UP часть (что применяется)
-4. Напиши DOWN часть (откат)
-5. Протестируй локально
+1. Определить что нужно сделать (новая таблица / column / index / RLS policy / constraint)
+2. Создать файл: `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
+3. Написать UP часть
+4. Добавить rollback plan (explicit DOWN если безопасен; иначе — комментарий с описанием как откатить)
+5. Протестировать локально
 6. Закоммитить
 
-## Шаблон для новой таблицы
+## Шаблон: новая таблица (user-owned данные)
 
 ```sql
--- Create analyses table
-CREATE TABLE analyses (
+-- UP: что делает эта миграция
+CREATE TABLE table_name (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  input_text TEXT NOT NULL,
-  input_length INTEGER,
-  status TEXT DEFAULT 'processing' CHECK (status IN ('processing', 'completed', 'failed')),
-  extracted_data JSONB,
-  error_message TEXT,
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  -- поля по спеке
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
-ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_rows" ON table_name USING (auth.uid() = user_id);
 
--- RLS: Users see only their own analyses
-CREATE POLICY "users_own_analyses" ON analyses
-  USING (auth.uid()::uuid = user_id);
+-- Indexes: добавлять только на поля в реальных queries
+-- Этот индекс для списка записей пользователя по дате:
+CREATE INDEX idx_table_user_created ON table_name(user_id, created_at DESC);
 
--- Indexes
-CREATE INDEX idx_analyses_user_id ON analyses(user_id);
-CREATE INDEX idx_analyses_created_at ON analyses(created_at DESC);
-
--- DOWN: Rollback
--- DROP TABLE IF EXISTS analyses CASCADE;
+-- Rollback plan:
+-- DROP TABLE IF EXISTS table_name;
 ```
 
-## Шаблон для добавления column
+**Примечание**: шаблон выше для таблиц с user_id. Для других таблиц (справочники, join-таблицы) структура другая — применять по смыслу.
+
+## Шаблон: добавить column
 
 ```sql
--- Add analysis_count to users
-ALTER TABLE users ADD COLUMN analyses_count_this_month INTEGER DEFAULT 0;
+-- UP: add column_name to table_name
+ALTER TABLE table_name ADD COLUMN column_name TYPE;
 
--- Backfill existing users
-UPDATE users SET analyses_count_this_month = (
-  SELECT COUNT(*) FROM analyses
-  WHERE user_id = users.id
-  AND created_at >= DATE_TRUNC('month', NOW())
-);
-
--- DOWN:
--- ALTER TABLE users DROP COLUMN analyses_count_this_month;
+-- Rollback:
+-- ALTER TABLE table_name DROP COLUMN column_name;
 ```
 
-## Шаблон для RLS policy
+## Шаблон: добавить RLS policy
 
 ```sql
--- Allow users to update their own analyses
-CREATE POLICY "users_update_own_analyses" ON analyses
-  FOR UPDATE
-  USING (auth.uid()::uuid = user_id)
-  WITH CHECK (auth.uid()::uuid = user_id);
+-- UP: policy name
+CREATE POLICY "policy_name" ON table_name
+  FOR [ALL|SELECT|INSERT|UPDATE|DELETE]
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);  -- WITH CHECK нужен для INSERT/UPDATE
 
--- DOWN:
--- DROP POLICY IF EXISTS "users_update_own_analyses" ON analyses;
+-- Rollback:
+-- DROP POLICY IF EXISTS "policy_name" ON table_name;
 ```
+
+## ON DELETE CASCADE
+
+Добавлять осознанно, не как дефолт. Подходит когда удаление родителя должно автоматически удалять дочерние записи. Не подходит когда хочется сохранить историю.
 
 ## Чеклист
 
-- [ ] Миграция имеет UP и DOWN части
-- [ ] RLS включена для таблиц с user data
-- [ ] Foreign keys с ON DELETE CASCADE
-- [ ] Индексы на frequently-queried columns
-- [ ] UUID для IDs (не auto-increment)
-- [ ] timestamptz для времени
-- [ ] Миграция протестирована (UP + DOWN locally)
-- [ ] Filename: `YYYYMMDDHHMMSS_description.sql`
+- [ ] Файл назван: `YYYYMMDDHHMMSS_description.sql`
+- [ ] Есть rollback plan (explicit DOWN или задокументированный способ)
+- [ ] RLS включена на таблицах с user data
+- [ ] Indexes только на поля в реальных queries
+- [ ] Не редактирую уже применённую миграцию
+- [ ] Протестировано локально (UP + попытка DOWN)
 
-## Testing локально
+## Команды
 
 ```bash
-# List current migrations
-npx supabase db list
-
-# Apply new migration
-npx supabase db reset
-
-# Проверить что таблица создана
-\dt (в psql)
-
-# Откатить миграцию (если есть DOWN)
-# Обычно это отдельная команда или вручную в UI
+npx supabase migration new <description>  # Создать файл с правильным именем
+npx supabase db reset                     # Применить все миграции локально (сбрасывает БД!)
 ```
-
-## Tips
-
-- Всегда включай DOWN part (важно для rollback!)
-- Индексы создавай на (user_id, created_at) для аналитик
-- RLS первым приоритетом для безопасности
-- Не модифицируй старые миграции, создавай новые

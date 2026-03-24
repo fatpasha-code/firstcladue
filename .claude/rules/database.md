@@ -4,51 +4,57 @@
 
 ## Правило
 
-Все изменения схемы БД **только через миграции**. Ручные SQL на production — запрещены.
+Все изменения схемы БД только через миграции. Ручные SQL в Supabase UI на production — запрещены.
 
-## Детали
+## Что требует миграции
 
-1. **Новая таблица** → создай миграцию в `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
-2. **Изменение таблицы** (add column, change type) → миграция
-3. **RLS policy** → миграция
-4. **Index** → миграция
-5. **Не редактируй** миграции которые уже прошли (создай новую)
+- Новая таблица
+- Добавление/изменение/удаление column
+- Изменение типа данных
+- Добавление/изменение RLS policy
+- Добавление/удаление index
+- Изменение constraint
 
-## Шаблон миграции
+## Шаблон
 
 ```sql
--- UP: What this migration does
-CREATE TABLE analyses (
+-- UP: что делает эта миграция
+CREATE TABLE table_name (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  input_text TEXT NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users(id),
+  content TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE analyses ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "users_own_analyses" ON analyses
-  USING (auth.uid()::uuid = user_id);
+ALTER TABLE table_name ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_rows" ON table_name USING (auth.uid() = user_id);
+CREATE INDEX idx_table_user_created ON table_name(user_id, created_at DESC);
 
-CREATE INDEX idx_analyses_user_id ON analyses(user_id);
-CREATE INDEX idx_analyses_created_at ON analyses(created_at DESC);
-
--- DOWN: Rollback
-DROP TABLE IF EXISTS analyses CASCADE;
+-- DOWN: откат
+-- DROP TABLE IF EXISTS table_name;
 ```
 
-## Обязательно
+## Правила
 
-- ✓ RLS включена для таблиц с данными юзера
-- ✓ Foreign keys с ON DELETE CASCADE
-- ✓ UUID для IDs (не auto-increment)
-- ✓ timestamptz для времени (не обычный timestamp)
-- ✓ Индексы на (user_id, created_at)
-- ✓ Миграция имеет DOWN часть
-- ✓ Проверена локально перед push (миграция + откат)
+- ✓ RLS для таблиц с user data (обязательно)
+- ✓ UUID для IDs
+- ✓ TIMESTAMPTZ для времени (не просто TIMESTAMP)
+- ✓ У каждой миграции есть rollback plan (explicit DOWN если безопасен; иначе — задокументированный способ откатить)
+- ✓ Файл назван: `YYYYMMDDHHMMSS_description.sql`
+- ✓ Не редактировать уже применённые миграции — создавать новые
 
-## Когда говорить "NO"
+## Шаблон выше — для user-owned данных
 
-- "This migration doesn't have a DOWN part"
-- "RLS not enabled on user-owned table"
-- "Modifying existing migration (should create new)"
-- "N+1 query opportunity detected in schema"
+Шаблон с `user_id REFERENCES auth.users(id)` и индексом на `(user_id, created_at DESC)` — типовой для таблиц принадлежащих пользователю. Не универсальный закон для справочников, join-таблиц и т.д.
+
+## ON DELETE CASCADE
+
+Добавлять осознанно, не как дефолт:
+- Подходит: удаление родителя должно автоматически удалять дочерние записи
+- Не подходит: хочется сохранить историю, orphaned records нужны для аудита
+
+## Говорить "NO" когда
+
+- Нет никакого rollback plan (ни DOWN, ни описания как откатить)
+- RLS не включена на таблице с user data
+- Редактируется уже применённая миграция
