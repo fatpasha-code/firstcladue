@@ -38,16 +38,16 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export default async function HistoryPage() {
   const supabase = await createSupabaseServerClient();
-  const { data: analyses } = await supabase
-    .from('analyses')
+  const { data: records } = await supabase
+    .from('records')
     .select('id, created_at, status, label')
     .order('created_at', { ascending: false });
 
-  if (!analyses?.length) {
-    return <p className="text-muted-foreground">Нет анализов. Создайте первый.</p>;
+  if (!records?.length) {
+    return <p className="text-muted-foreground">Нет записей. Создайте первую.</p>;
   }
 
-  return <AnalysisList analyses={analyses} />;
+  return <RecordList records={records} />;
 }
 ```
 
@@ -71,7 +71,7 @@ export function AnalyzeForm() {
     setError(null);
     try {
       const { id } = await submitAnalysis(text);
-      window.location.href = `/analyses/${id}`;
+      window.location.href = `/records/${id}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка. Попробуйте ещё раз.');
     } finally {

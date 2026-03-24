@@ -36,8 +36,8 @@ export async function analyzeText(text: string): Promise<{ id: string }> {
   }
 
   const { data, error } = await supabase
-    .from('analyses')
-    .insert({ user_id: user.id, input_text: text, status: 'pending' })
+    .from('records')
+    .insert({ user_id: user.id, raw_text: text, status: 'pending' })
     .select('id')
     .single();
 
@@ -56,7 +56,7 @@ export async function analyzeText(text: string): Promise<{ id: string }> {
 
 ### API Route:
 ```typescript
-// app/api/analyses/route.ts
+// app/api/records/route.ts
 export async function GET(req: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -64,14 +64,14 @@ export async function GET(req: NextRequest) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data, error } = await supabase
-      .from('analyses')
+      .from('records')
       .select('id, created_at, status, label')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
     return Response.json(data);
   } catch (error) {
-    console.error('GET /api/analyses error:', error);
+    console.error('GET /api/records error:', error);
     return Response.json({ error: 'Internal error' }, { status: 500 });
   }
 }

@@ -44,7 +44,7 @@ CREATE INDEX idx_table_user_created ON table_name(user_id, created_at DESC);
 
 Добавлять если: удаление родительской записи должно автоматически удалять дочерние.
 Не добавлять если: хочешь сохранить дочерние записи (архив) или когда поведение неясно.
-В этом проекте: auth.users — primary reference. Cascade на analyses и reports — разумно, но явно решать.
+В этом проекте: auth.users — primary reference. Cascade на records и reports — разумно, но явно решать.
 
 ## Чеклист перед коммитом
 

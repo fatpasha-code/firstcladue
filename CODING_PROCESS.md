@@ -21,7 +21,7 @@
   "Пользователь видит результат анализа"
     → DB: добавить extracted_data column
     → API: Server Action для extraction
-    → UI: страница /analyses/[id] с результатами
+    → UI: страница /records/[id] с результатами
     → Test: тест парсинга Claude API response
 
   "Исправить отображение даты в карточке"
