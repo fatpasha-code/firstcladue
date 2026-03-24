@@ -122,3 +122,61 @@ npm run test          # Тесты
 npm run lint          # Lint
 npx supabase migration new <name>  # Новая миграция
 ```
+
+<!-- GSD:project-start source:PROJECT.md -->
+## Project
+
+**Update Tracker**
+
+Internal tool for Pavel: accepts text from calls, chats, and notes — and turns them into management artifacts. Extracts what's done, in progress, blocked, who owns what, and deadlines. Generates weekly/monthly digests and follow-up lists. Translates technical updates into management language: what's actually happening, hidden blockers, what to clarify.
+
+Single user. Not a SaaS product.
+
+**Core Value:** Given a raw text from a call or chat, produce a structured management picture in under 2 minutes — reducing the need to re-read the original.
+
+### Constraints
+
+- **Stack**: Next.js + Supabase + Vercel — chosen, not up for debate in v1
+- **Single user**: No multi-tenancy, no team features, no public access in v1
+- **AI models**: Never hardcoded — always from env vars. Fail explicitly if env not set
+- **Migrations**: All schema changes via migration files with rollback plan. No manual SQL on prod
+- **Spec**: Don't code without spec. Don't auto-update spec under unverified code
+<!-- GSD:project-end -->
+
+<!-- GSD:stack-start source:STACK.md -->
+## Technology Stack
+
+Technology stack not yet documented. Will populate after codebase mapping or first phase.
+<!-- GSD:stack-end -->
+
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+## Conventions
+
+Conventions not yet established. Will populate as patterns emerge during development.
+<!-- GSD:conventions-end -->
+
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+## Architecture
+
+Architecture not yet mapped. Follow existing patterns found in the codebase.
+<!-- GSD:architecture-end -->
+
+<!-- GSD:workflow-start source:GSD defaults -->
+## GSD Workflow Enforcement
+
+Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+
+Use these entry points:
+- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
+- `/gsd:debug` for investigation and bug fixing
+- `/gsd:execute-phase` for planned phase work
+
+Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+<!-- GSD:workflow-end -->
+
+<!-- GSD:profile-start -->
+## Developer Profile
+
+> Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
+> This section is managed by `generate-claude-profile` -- do not edit manually.
+<!-- GSD:profile-end -->
