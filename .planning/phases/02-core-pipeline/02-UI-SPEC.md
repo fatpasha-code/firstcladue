@@ -30,6 +30,12 @@ created: 2026-03-25
 
 ---
 
+## Focal Point
+
+Primary focal point: the "Анализировать" CTA button -- sole accent-colored element on the page. All other elements use neutral or muted colors to direct attention toward this action.
+
+---
+
 ## Spacing Scale
 
 Declared values (must be multiples of 4):
@@ -50,7 +56,7 @@ Exceptions: none
 - Form fields inside Card: `space-y-4` (16px) -- consistent with Phase 1 login form
 - Card padding: use shadcn Card defaults (CardHeader + CardContent provide lg spacing)
 - Gap between input form and inline result: 24px (`gap-6`)
-- Textarea internal padding: 12px (shadcn default for input elements)
+- Textarea internal padding: 12px -- this is a shadcn internal default for input elements, not part of the custom layout spacing scale. Do not use 12px in custom layouts.
 
 ---
 
@@ -59,14 +65,16 @@ Exceptions: none
 | Role | Size | Weight | Line Height | Tailwind |
 |------|------|--------|-------------|----------|
 | Body | 14px | 400 (regular) | 1.5 | `text-sm` |
-| Label | 14px | 500 (medium) | 1.4 | `text-sm font-medium` (shadcn Label default) |
+| Label | 14px | 600 (semibold) | 1.4 | `text-sm font-semibold` |
 | Heading | 20px | 600 (semibold) | 1.2 | `text-xl font-semibold` |
 | Display | 24px | 600 (semibold) | 1.2 | `text-2xl font-semibold` |
+
+**Weights used: 2 total -- 400 (regular) and 600 (semibold).**
 
 **Phase-specific typography notes:**
 - Page heading "Update Tracker": Display (24px, semibold) -- consistent with Phase 1
 - Card title "Новый анализ": Heading via shadcn CardTitle
-- Form labels ("Текст для анализа", "Метка"): Label role (14px, medium)
+- Form labels ("Текст для анализа", "Метка"): Label role (14px, semibold)
 - Staged loading messages: Body (14px, regular), `text-muted-foreground`
 - Inline result summary text: Body (14px, regular)
 - Character counter: Body (14px, regular), `text-muted-foreground`
@@ -100,7 +108,7 @@ Dark mode variants:
 | yellow | `dark:bg-amber-900/30` | `dark:text-amber-300` | appended to light classes |
 | red | `dark:bg-red-900/30` | `dark:text-red-300` | appended to light classes |
 
-**Badge rendering:** Rounded pill shape: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium`
+**Badge rendering:** Rounded pill shape: `inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold`
 
 ---
 
@@ -169,6 +177,7 @@ All user-facing copy in Russian (per D-03).
 | Result status label (red) | Требует внимания |
 | Result link to full record | Открыть запись |
 | Empty result summary fallback | Анализ завершён, но интерпретация не содержит текста. |
+| Sign out button | Выйти |
 
 Destructive actions in this phase: none. No delete, no irreversible operations.
 
@@ -217,7 +226,7 @@ Destructive actions in this phase: none. No delete, no irreversible operations.
 
   <!-- Sign out form, bottom -->
   <form> signOut action
-    <Button variant="outline"> "Sign Out"
+    <Button variant="outline"> "Выйти"
   </form>
 </main>
 ```
