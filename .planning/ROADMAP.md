@@ -32,12 +32,11 @@ Plans:
 
 **Covers:** INGEST-01–04, EXTRACT-01–02, INTERP-01
 
-### Plans
+**Plans:** 2 plans
 
-1. **Database migration** — `records` table (full schema from TECH_SPEC.md), RLS policy, index
-2. **Input form** — `/` page: Textarea + label field + "Analyze" button, validation, loading state
-3. **Extraction pipeline** — `createRecord` Server Action: save record, run Claude extraction (sync), save `extracted_data`
-4. **Interpretation pipeline** — run Claude interpretation after extraction, save `interpretation` to same record
+Plans:
+- [ ] 02-01-PLAN.md — DB migration, install deps (Anthropic SDK + Zod), Zod schemas, AI extraction/interpretation pipeline modules
+- [ ] 02-02-PLAN.md — Server Actions (save/extract/interpret), AnalyzeForm UI with staged loading, StatusBadge, home page rewrite
 
 **Done when:**
 - [ ] User can paste text and submit
