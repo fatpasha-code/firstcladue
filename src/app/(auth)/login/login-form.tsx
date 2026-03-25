@@ -125,7 +125,7 @@ export function LoginForm() {
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full transition-shadow hover:shadow-[0_0_16px_rgba(255,255,255,0.15)]" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </form>
@@ -136,7 +136,7 @@ export function LoginForm() {
               setShowResetForm(true)
               setError(null)
             }}
-            className="text-sm text-muted-foreground underline"
+            className="text-sm text-muted-foreground underline transition-all hover:drop-shadow-[0_0_6px_rgba(255,255,255,0.5)] hover:text-foreground"
           >
             Forgot password?
           </button>
