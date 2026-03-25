@@ -14,12 +14,12 @@ Given a raw text from a call or chat, produce a structured management picture in
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] All pages protected by auth (Supabase Auth, email/password) — *Validated in Phase 01: Foundation*
+- [x] AUTH-01, AUTH-02, AUTH-03 — login, password reset, route protection — *Validated in Phase 01: Foundation*
 
 ### Active
 
 **Core pipeline**
-- [ ] All pages protected by auth (Supabase Auth, email/password or magic link)
 - [ ] User can paste text (call transcript / chat / notes) and trigger analysis
 - [ ] Claude extracts: done, in_progress, blockers, assignments, deadlines (explicit vs inferred)
 - [ ] Claude generates management interpretation: summary, real_status, hidden_blockers, clarification_questions
