@@ -1,5 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { ExtractedDataSchema, type ExtractedData } from './schemas'
 
 const client = new Anthropic()
@@ -11,15 +10,16 @@ export async function runExtraction(rawText: string): Promise<ExtractedData> {
   }
 
   try {
-    const response = await client.messages.parse({
+    const message = await client.messages.stream({
       model,
       max_tokens: 4096,
-      system: 'Ты -- аналитик, извлекающий структурированные данные из текстов рабочих созвонов и переписок. Весь вывод строго на русском языке. Все поля, описания и значения -- только на русском.\n\nИзвлеки из текста:\n- done: что завершено\n- in_progress: что в работе\n- blockers: блокеры и их уровень влияния (high/medium/low)\n- assignments: кто за что отвечает и к какому сроку\n- deadlines: явные (explicit) и выведенные из контекста (inferred) дедлайны\n\nЕсли информации нет для какой-то категории, верни пустой массив.',
+      system: 'Ты -- аналитик, извлекающий структурированные данные из текстов рабочих созвонов и переписок. Весь вывод строго на русском языке. Все поля, описания и значения -- только на русском.\n\nИзвлеки из текста и верни ТОЛЬКО валидный JSON без markdown, без ```json, без пояснений. Строго соблюдай эту структуру:\n{\n  "done": [{"description": "что сделано", "person": "кто (опционально)"}],\n  "in_progress": [{"description": "что в работе", "person": "кто (опционально)", "deadline": "дедлайн (опционально)"}],\n  "blockers": [{"description": "описание блокера", "impact": "high|medium|low"}],\n  "assignments": [{"person": "имя", "tasks": ["задача 1", "задача 2"], "by_when": "срок (опционально)"}],\n  "deadlines": [{"description": "описание", "date": "дата", "type": "explicit|inferred"}]\n}\n\nЕсли информации нет для какой-то категории, верни пустой массив.',
       messages: [{ role: 'user', content: rawText }],
-      output_config: { format: zodOutputFormat(ExtractedDataSchema) }
-    })
+    }).finalMessage()
 
-    return response.parsed_output as ExtractedData
+    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const json = JSON.parse(text.trim())
+    return ExtractedDataSchema.parse(json)
   } catch (error) {
     console.error('[runExtraction] error:', error)
     throw error
