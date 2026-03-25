@@ -11,11 +11,11 @@
 
 **Covers:** AUTH-01, AUTH-02, AUTH-03
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Scaffold Next.js project + Supabase client utilities + auth middleware (2026-03-25)
-- [ ] 01-02-PLAN.md — Auth UI: login page, password reset flow, sign out, protected home page
+- [x] 01-02-PLAN.md — Auth UI: login page, password reset flow, sign out, protected home page
 
 **Done when:**
 - [ ] `npm run dev` runs without errors

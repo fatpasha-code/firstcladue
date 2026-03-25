@@ -7,7 +7,7 @@
 
 ### Auth
 
-- [ ] **AUTH-01**: User can sign in with email and password or magic link
+- [x] **AUTH-01**: User can sign in with email and password or magic link
 - [x] **AUTH-02**: User session persists across browser refresh
 - [x] **AUTH-03**: All pages redirect to /login when unauthenticated
 
@@ -78,7 +78,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
 | AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
 | INGEST-01 | Phase 2 | Pending |
