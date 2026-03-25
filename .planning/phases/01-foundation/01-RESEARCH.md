@@ -47,6 +47,7 @@ None -- discussion stayed within phase scope.
 ## Project Constraints (from CLAUDE.md)
 
 - **Stack locked:** Next.js (App Router) + Tailwind CSS + shadcn/ui + Supabase + Vercel
+- **UI design references:** 21st.dev (modern UI patterns, layout, interactions), uibits.co (visual inspiration) — shadcn/ui for components, these for design direction
 - **Server Components by default.** `use client` only for interactivity (login form needs it).
 - **4-state pattern** for async components (loading/empty/error/success) -- applies to login form states.
 - **Server Actions for form submit** -- login action must be a Server Action, not a fetch to `/api/`.

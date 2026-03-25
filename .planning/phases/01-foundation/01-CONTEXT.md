@@ -31,6 +31,7 @@ Scaffold the project, configure Supabase Auth, and protect all routes. Nothing e
 - Folder structure: `src/` directory, `@/` path alias, App Router conventions
 - TypeScript config: strict mode on
 - shadcn/ui components to use for login form (likely `Card`, `Input`, `Button`, `Label`)
+- Design references: 21st.dev (UI patterns, interactions), uibits.co (visual inspiration) — use for any non-obvious UI decisions
 
 </decisions>
 

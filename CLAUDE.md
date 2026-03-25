@@ -26,6 +26,8 @@
 
 - **Frontend**: Next.js (App Router) + Tailwind CSS + shadcn/ui
   - После инициализации проекта зафиксировать конкретную версию в `package.json`. Не держать версию плавающей. Обновлять сознательно.
+  - **UI библиотека**: shadcn/ui — базовые компоненты (Button, Input, Card и т.д.)
+  - **Дизайн-референсы**: 21st.dev (современные UI-паттерны, layout, interactions), uibits.co (visual inspiration)
 - **Backend**: Supabase (PostgreSQL + встроенная Auth)
 - **Auth**: Supabase Auth (для MVP достаточно; Clerk — опция для будущего)
 - **Deploy**: Vercel
