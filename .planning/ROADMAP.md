@@ -15,14 +15,14 @@
 
 Plans:
 - [x] 01-01-PLAN.md — Scaffold Next.js project + Supabase client utilities + auth middleware (2026-03-25)
-- [x] 01-02-PLAN.md — Auth UI: login page, password reset flow, sign out, protected home page
+- [x] 01-02-PLAN.md — Auth UI: login page, password reset flow, sign out, protected home page (2026-03-25)
 
 **Done when:**
-- [ ] `npm run dev` runs without errors
-- [ ] `/login` page renders and accepts credentials
-- [ ] Authenticated user lands on `/`
-- [ ] Unauthenticated request to `/` redirects to `/login`
-- [ ] `.env.example` has all required vars
+- [x] `npm run dev` runs without errors
+- [x] `/login` page renders and accepts credentials
+- [x] Authenticated user lands on `/`
+- [x] Unauthenticated request to `/` redirects to `/login`
+- [x] `.env.example` has all required vars
 
 ---
 

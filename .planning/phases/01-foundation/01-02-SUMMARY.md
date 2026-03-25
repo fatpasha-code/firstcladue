@@ -43,9 +43,9 @@ decisions:
   - "signOut uses form action={signOut} pattern — no client JS required, works without JavaScript"
   - "Home page remains placeholder for Phase 2 input form — just shows user email and sign out"
 metrics:
-  duration_minutes: 2
+  duration_minutes: 30
   completed_date: "2026-03-25"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   files_created: 8
   files_modified: 1
@@ -53,11 +53,7 @@ metrics:
 
 # Phase 01 Plan 02: Auth UI — Login, Password Reset, Sign Out Summary
 
-**One-liner:** Complete auth UI built with Server Actions and Client Components — login with inline error, password reset via email link, OTP confirm handler, sign out, and protected home page using getUser() defense in depth.
-
-## Status
-
-**PAUSED at checkpoint:** Task 3 (human verification) — awaiting user to verify auth flow end-to-end.
+**Complete auth UI built with Server Actions and Client Components — login with inline error, password reset via email link, OTP confirm handler, sign out, and protected home page using getUser() defense in depth.**
 
 ## Tasks Completed
 
@@ -65,21 +61,23 @@ metrics:
 |------|------|--------|-------|
 | 1 | Create login page with Server Actions | 4c5c875 | src/app/(auth)/login/page.tsx, src/app/(auth)/login/login-form.tsx, src/app/(auth)/login/actions.ts |
 | 2 | Create password reset, email confirm handler, sign out, protected home | 46b4a24 | src/app/(auth)/reset-password/actions.ts, src/app/(auth)/reset-password/reset-password-form.tsx, src/app/(auth)/reset-password/page.tsx, src/app/auth/confirm/route.ts, src/app/actions.ts, src/app/page.tsx |
-
-## Task Pending (Checkpoint)
-
-| Task | Name | Status |
-|------|------|--------|
-| 3 | Verify complete auth flow end-to-end | Awaiting human verification |
+| 3 | Verify complete auth flow end-to-end | human-approved | (no code changes — manual verification) |
 
 ## Verification Results
 
 - `npx tsc --noEmit`: PASSED — no TypeScript errors after both tasks
 - `npm run build`: PASSED — all routes compile cleanly
-  - `/` — Dynamic (ƒ), protected by getUser()
-  - `/login` — Static (○), public
-  - `/reset-password` — Static (○), public
-  - `/auth/confirm` — Dynamic (ƒ), route handler
+  - `/` — Dynamic (f), protected by getUser()
+  - `/login` — Static (o), public
+  - `/reset-password` — Static (o), public
+  - `/auth/confirm` — Dynamic (f), route handler
+- End-to-end auth flow: APPROVED by user (human-verify checkpoint)
+  - Login page renders at /login with centered card
+  - Successful login redirects to /
+  - Failed login shows inline error
+  - Session persists across browser refresh
+  - Sign out clears session and redirects to /login
+  - Unauthenticated access to / redirects to /login
 
 ## Deviations from Plan
 
