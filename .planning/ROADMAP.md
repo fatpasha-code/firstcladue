@@ -32,11 +32,11 @@ Plans:
 
 **Covers:** INGEST-01–04, EXTRACT-01–02, INTERP-01
 
-**Plans:** 1/2 plans complete
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — DB migration, install deps (Anthropic SDK + Zod), Zod schemas, AI extraction/interpretation pipeline modules (2026-03-25)
-- [ ] 02-02-PLAN.md — Server Actions (save/extract/interpret), AnalyzeForm UI with staged loading, StatusBadge, home page rewrite
+- [x] 02-02-PLAN.md — Server Actions (save/extract/interpret), AnalyzeForm UI with staged loading, StatusBadge, home page rewrite
 
 **Done when:**
 - [ ] User can paste text and submit

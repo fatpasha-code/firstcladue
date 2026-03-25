@@ -13,21 +13,21 @@
 
 ### Ingestion
 
-- [ ] **INGEST-01**: User can paste text (call transcript / chat / notes) into input form
-- [ ] **INGEST-02**: System validates input: non-empty, within character limit
-- [ ] **INGEST-03**: User can add an optional label to a record
-- [ ] **INGEST-04**: User sees loading state while analysis runs
+- [x] **INGEST-01**: User can paste text (call transcript / chat / notes) into input form
+- [x] **INGEST-02**: System validates input: non-empty, within character limit
+- [x] **INGEST-03**: User can add an optional label to a record
+- [x] **INGEST-04**: User sees loading state while analysis runs
 
 ### Extraction
 
-- [ ] **EXTRACT-01**: System extracts: done, in_progress, blockers, assignments, deadlines
-- [ ] **EXTRACT-02**: Inferred deadlines are marked separately from explicit ones
+- [x] **EXTRACT-01**: System extracts: done, in_progress, blockers, assignments, deadlines
+- [x] **EXTRACT-02**: Inferred deadlines are marked separately from explicit ones
 - [ ] **EXTRACT-03**: User can view extracted data in structured tabs
 - [ ] **EXTRACT-04**: User can edit extracted data inline *(post-core, implement after pipeline is stable)*
 
 ### Interpretation
 
-- [ ] **INTERP-01**: System generates management interpretation: summary, real_status, hidden_blockers, ambiguities, clarification_questions
+- [x] **INTERP-01**: System generates management interpretation: summary, real_status, hidden_blockers, ambiguities, clarification_questions
 - [ ] **INTERP-02**: User can view interpretation in a dedicated tab on the record page
 - [ ] **INTERP-03**: real_status is clearly and visibly communicated to the user *(specific visual treatment left to UI layer)*
 
@@ -81,15 +81,15 @@
 | AUTH-01 | Phase 1 | Complete |
 | AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
-| INGEST-01 | Phase 2 | Pending |
-| INGEST-02 | Phase 2 | Pending |
-| INGEST-03 | Phase 2 | Pending |
-| INGEST-04 | Phase 2 | Pending |
-| EXTRACT-01 | Phase 2 | Pending |
-| EXTRACT-02 | Phase 2 | Pending |
+| INGEST-01 | Phase 2 | Complete |
+| INGEST-02 | Phase 2 | Complete |
+| INGEST-03 | Phase 2 | Complete |
+| INGEST-04 | Phase 2 | Complete |
+| EXTRACT-01 | Phase 2 | Complete |
+| EXTRACT-02 | Phase 2 | Complete |
 | EXTRACT-03 | Phase 3 | Pending |
 | EXTRACT-04 | Phase 3 | Pending |
-| INTERP-01 | Phase 2 | Pending |
+| INTERP-01 | Phase 2 | Complete |
 | INTERP-02 | Phase 3 | Pending |
 | INTERP-03 | Phase 3 | Pending |
 | HIST-01 | Phase 4 | Pending |
