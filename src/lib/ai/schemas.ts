@@ -26,14 +26,29 @@ export const ExtractedDataSchema = z.object({
   }))
 })
 
+export const EvidenceSchema = z.object({
+  type: z.enum(['quote', 'paraphrase']),
+  text: z.string().min(1),
+  speaker: z.string().optional(),
+  confidence: z.enum(['high', 'medium'])
+})
+
+export const GroundedClaimSchema = z.object({
+  claim: z.string(),
+  evidence: EvidenceSchema
+})
+
 export const InterpretationSchema = z.object({
   summary: z.string(),
   management_view: z.string(),
-  hidden_blockers: z.array(z.string()),
-  ambiguities: z.array(z.string()),
+  hidden_blockers: z.array(GroundedClaimSchema),
+  ambiguities: z.array(GroundedClaimSchema),
   clarification_questions: z.array(z.string()),
-  real_status: z.enum(['green', 'yellow', 'red'])
+  real_status: z.enum(['green', 'yellow', 'red']),
+  real_status_reason: z.string()
 })
 
 export type ExtractedData = z.infer<typeof ExtractedDataSchema>
 export type Interpretation = z.infer<typeof InterpretationSchema>
+export type Evidence = z.infer<typeof EvidenceSchema>
+export type GroundedClaim = z.infer<typeof GroundedClaimSchema>
