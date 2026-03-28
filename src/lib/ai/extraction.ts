@@ -13,12 +13,27 @@ export async function runExtraction(rawText: string): Promise<ExtractedData> {
     const message = await client.messages.stream({
       model,
       max_tokens: 4096,
+      // @ts-ignore — proxy-specific: explicitly disable thinking to prevent timeout
+      thinking: { type: 'disabled' },
       system: 'Ты -- аналитик, извлекающий структурированные данные из текстов рабочих созвонов и переписок. Весь вывод строго на русском языке. Все поля, описания и значения -- только на русском.\n\nИзвлеки из текста и верни ТОЛЬКО валидный JSON без markdown, без ```json, без пояснений. Строго соблюдай эту структуру:\n{\n  "done": [{"description": "что сделано", "person": "кто (опционально)"}],\n  "in_progress": [{"description": "что в работе", "person": "кто (опционально)", "deadline": "дедлайн (опционально)"}],\n  "blockers": [{"description": "описание блокера", "impact": "high|medium|low"}],\n  "assignments": [{"person": "имя", "tasks": ["задача 1", "задача 2"], "by_when": "срок (опционально)"}],\n  "deadlines": [{"description": "описание", "date": "дата", "type": "explicit|inferred"}]\n}\n\nЕсли информации нет для какой-то категории, верни пустой массив.',
       messages: [{ role: 'user', content: rawText }],
     }).finalMessage()
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
-    const json = JSON.parse(text.trim())
+    console.log('[runExtraction] stop_reason:', message.stop_reason)
+    console.log('[runExtraction] content blocks:', message.content.length)
+    console.log('[runExtraction] content structure:', JSON.stringify(message.content.map(b => ({ type: b.type, len: b.type === 'text' ? b.text.length : 0 }))))
+    const textBlock = message.content.find(b => b.type === 'text')
+    const text = textBlock?.type === 'text' ? textBlock.text : ''
+    console.log('[runExtraction] text length:', text.length)
+    console.log('[runExtraction] text preview:', text.slice(0, 300))
+
+    if (!text.trim()) {
+      throw new Error(`Empty response from model. stop_reason: ${message.stop_reason}`)
+    }
+
+    // Strip markdown fences if model ignored instructions
+    const cleaned = text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+    const json = JSON.parse(cleaned)
     return ExtractedDataSchema.parse(json)
   } catch (error) {
     console.error('[runExtraction] error:', error)

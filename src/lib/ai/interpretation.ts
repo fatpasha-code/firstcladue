@@ -16,6 +16,8 @@ export async function runInterpretation(rawText: string, extractedData: Extracte
     const message = await client.messages.stream({
       model,
       max_tokens: 4096,
+      // @ts-ignore — proxy-specific: explicitly disable thinking to prevent timeout
+      thinking: { type: 'disabled' },
       system: `Ты — управленческий аналитик. Интерпретируй рабочий разговор на языке менеджера.
 
 Весь вывод строго на русском языке.
@@ -74,7 +76,8 @@ real_status:
       messages: [{ role: 'user', content: 'Исходный текст:\n\n' + rawText + '\n\nИзвлечённые данные:\n\n' + JSON.stringify(extractedData, null, 2) }],
     }).finalMessage()
 
-    const text = message.content[0].type === 'text' ? message.content[0].text : ''
+    const textBlock = message.content.find(b => b.type === 'text')
+    const text = textBlock?.type === 'text' ? textBlock.text : ''
     const json = JSON.parse(text.trim())
     return InterpretationSchema.parse(json)
   } catch (error) {
