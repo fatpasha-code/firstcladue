@@ -74,6 +74,8 @@
 
 **TDD**: тесты для API, критической логики, интеграций. Не для каждого UI-компонента.
 
+**AI prompts**: interpretation prompt нельзя тюнить под один transcript. Любая правка должна лечить класс ошибок. Перед изменением — см. `.claude/rules/interpretation-prompt-evolution.md`. Benchmark set: `benchmarks/interpretation/`.
+
 ---
 
 ## Процесс: идея → shipped
