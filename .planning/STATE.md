@@ -84,5 +84,11 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 - Plan 01-01 complete: Next.js scaffold + Supabase SSR utilities + auth middleware
 - Plan 01-02 complete: Auth UI (login, password reset, sign out, protected home) — human-verified
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260329-2yc | Improve AI pipeline grounding: evidence schema, qualifier handling, prompt grounding rules | 2026-03-29 | 4cd8fcd | [260329-2yc](./quick/260329-2yc-improve-ai-pipeline-grounding-evidence-s/) |
+
 ---
-*Last updated: 2026-03-25 after 01-01 execution*
+*Last updated: 2026-03-29 — Quick task 260329-2yc: AI pipeline grounding improvements*
