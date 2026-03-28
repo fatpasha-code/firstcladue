@@ -22,7 +22,8 @@ export const ExtractedDataSchema = z.object({
   deadlines: z.array(z.object({
     date: z.string(),
     description: z.string(),
-    type: z.enum(['explicit', 'inferred'])
+    type: z.enum(['explicit', 'inferred']),
+    condition: z.string().optional()
   }))
 })
 
