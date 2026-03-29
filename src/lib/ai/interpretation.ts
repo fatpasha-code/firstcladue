@@ -15,7 +15,7 @@ export async function runInterpretation(rawText: string, extractedData: Extracte
   try {
     const message = await client.messages.stream({
       model,
-      max_tokens: 2048,
+      max_tokens: 4096,
       // @ts-ignore — proxy-specific: explicitly disable thinking to prevent timeout
       thinking: { type: 'disabled' },
       system: `Ты — управленческий аналитик. Интерпретируй рабочий разговор на языке менеджера.
