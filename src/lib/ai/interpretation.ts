@@ -12,8 +12,10 @@ export async function runInterpretation(rawText: string, extractedData: Extracte
     throw new Error('CLAUDE_INTERPRETATION_MODEL env var is not set')
   }
 
-  try {
-    const message = await client.messages.stream({
+  const isConnectionError = (e: unknown) =>
+    e instanceof Error && ('code' in e ? (e as NodeJS.ErrnoException).code === 'ECONNRESET' : false)
+
+  const attempt = async () => client.messages.stream({
       model,
       max_tokens: 4096,
       // @ts-ignore — proxy-specific: explicitly disable thinking to prevent timeout
@@ -103,12 +105,25 @@ real_status_reason: одно предложение с главной причи
       messages: [{ role: 'user', content: 'Исходный текст:\n\n' + rawText + '\n\nИзвлечённые данные:\n\n' + JSON.stringify(extractedData, null, 2) }],
     }).finalMessage()
 
+  const parseMessage = (message: Awaited<ReturnType<typeof attempt>>) => {
     console.log('[runInterpretation] usage:', message.usage)
     const textBlock = message.content.find(b => b.type === 'text')
     const text = textBlock?.type === 'text' ? textBlock.text : ''
-    const json = JSON.parse(text.trim())
-    return InterpretationSchema.parse(json)
+    return InterpretationSchema.parse(JSON.parse(text.trim()))
+  }
+
+  try {
+    return parseMessage(await attempt())
   } catch (error) {
+    if (isConnectionError(error)) {
+      console.warn('[runInterpretation] ECONNRESET — retrying once')
+      try {
+        return parseMessage(await attempt())
+      } catch (retryError) {
+        console.error('[runInterpretation] retry failed:', retryError)
+        throw retryError
+      }
+    }
     console.error('[runInterpretation] error:', error)
     throw error
   }
