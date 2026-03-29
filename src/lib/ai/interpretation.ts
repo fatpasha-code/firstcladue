@@ -13,9 +13,9 @@ export async function runInterpretation(rawText: string, extractedData: Extracte
   }
 
   try {
-    const message = await client.messages.create({
+    const message = await client.messages.stream({
       model,
-      max_tokens: 4096,
+      max_tokens: 2048,
       // @ts-ignore — proxy-specific: explicitly disable thinking to prevent timeout
       thinking: { type: 'disabled' },
       system: `Ты — управленческий аналитик. Интерпретируй рабочий разговор на языке менеджера.
@@ -101,7 +101,7 @@ real_status_reason: одно предложение с главной причи
   "real_status_reason": "одно предложение с главной причиной"
 }`,
       messages: [{ role: 'user', content: 'Исходный текст:\n\n' + rawText + '\n\nИзвлечённые данные:\n\n' + JSON.stringify(extractedData, null, 2) }],
-    })
+    }).finalMessage()
 
     const textBlock = message.content.find(b => b.type === 'text')
     const text = textBlock?.type === 'text' ? textBlock.text : ''
