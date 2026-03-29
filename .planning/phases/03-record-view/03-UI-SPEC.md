@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: record-view
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova
 created: 2026-03-29
+reviewed_at: 2026-03-29
 ---
 
 # Phase 3 — UI Design Contract
