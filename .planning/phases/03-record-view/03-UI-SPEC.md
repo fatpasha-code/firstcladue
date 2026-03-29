@@ -48,11 +48,11 @@ Exceptions: none
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | List item descriptions, summary text, management_view prose |
-| Label | 14px | 500 (medium) | 1.4 | Tab labels, field labels in edit mode, person names in assignments |
+| Label | 14px | 600 (semibold) | 1.4 | Tab labels, field labels in edit mode, person names in assignments |
 | Heading | 20px | 600 (semibold) | 1.2 | Page title (label or "Запись от {date}"), section headings in interpretation tab |
 | Small | 12px | 400 (regular) | 1.4 | Badge text (StatusBadge, impact badges, "выведен"), evidence citations, muted metadata |
 
-Note: Display size not needed for this phase. Two weights used: 400 and 600 (500 only via Tailwind `font-medium` for labels).
+Note: Display size not needed for this phase. Two weights used: 400 (regular) and 600 (semibold). Label and Heading share 600; Body and Small share 400.
 
 ---
 
@@ -141,6 +141,8 @@ Accent reserved for: active tab underline, primary action buttons ("Редакт
 |                                                           |
 +----------------------------------------------------------+
 ```
+
+Primary focal point: page title (Heading, top-left after back link). Eye enters at the title, reads the StatusBadge to its right, then drops to the tab bar for navigation.
 
 Page max-width: `max-w-4xl` (896px). Centered with `mx-auto`. Horizontal padding: 32px (xl). Top padding: 32px.
 
@@ -258,7 +260,7 @@ Each item: ImpactBadge (colored per D-05) + `description` as body text on the sa
 
 ### Tab: Назначения (assignments[]) (D-07)
 
-Grouped by person. `person` as label (14px / 500). Below: unordered list of `tasks[]`. If `by_when` present: muted small text below task list.
+Grouped by person. `person` as label (14px / 600). Below: unordered list of `tasks[]`. If `by_when` present: muted small text below task list.
 
 ### Tab: Дедлайны (deadlines[])
 
