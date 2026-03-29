@@ -19,6 +19,7 @@ export async function runExtraction(rawText: string): Promise<ExtractedData> {
       messages: [{ role: 'user', content: rawText }],
     }).finalMessage()
 
+    console.log('[runExtraction] usage:', message.usage)
     console.log('[runExtraction] stop_reason:', message.stop_reason)
     console.log('[runExtraction] content blocks:', message.content.length)
     console.log('[runExtraction] content structure:', JSON.stringify(message.content.map(b => ({ type: b.type, len: b.type === 'text' ? b.text.length : 0 }))))

@@ -103,6 +103,7 @@ real_status_reason: одно предложение с главной причи
       messages: [{ role: 'user', content: 'Исходный текст:\n\n' + rawText + '\n\nИзвлечённые данные:\n\n' + JSON.stringify(extractedData, null, 2) }],
     }).finalMessage()
 
+    console.log('[runInterpretation] usage:', message.usage)
     const textBlock = message.content.find(b => b.type === 'text')
     const text = textBlock?.type === 'text' ? textBlock.text : ''
     const json = JSON.parse(text.trim())
