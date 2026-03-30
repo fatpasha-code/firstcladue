@@ -69,6 +69,16 @@ Plans:
 
 ---
 
+### Phase 03.1: Record View Overhaul (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 3
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 03.1 to break down)
+
 ## Phase 4: History & Review
 
 **Goal:** User can browse all past records, mark as reviewed, select for report generation.

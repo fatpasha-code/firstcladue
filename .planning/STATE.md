@@ -78,6 +78,12 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 | Phase 03-record-view P01 | 4 | 3 tasks | 13 files |
 | Phase 03 P02 | 7 | 2 tasks | 4 files |
 
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 3.1 inserted after Phase 3: Record View Overhaul (URGENT) — UI feedback from Phase 3 review: kanban layout, source quotes, manager actions, meeting_date, hidden blockers merge
+
 ## Notes
 
 - Initialized 2026-03-25
