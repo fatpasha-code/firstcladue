@@ -22,14 +22,14 @@
 
 - [x] **EXTRACT-01**: System extracts: done, in_progress, blockers, assignments, deadlines
 - [x] **EXTRACT-02**: Inferred deadlines are marked separately from explicit ones
-- [ ] **EXTRACT-03**: User can view extracted data in structured tabs
+- [x] **EXTRACT-03**: User can view extracted data in structured tabs
 - [ ] **EXTRACT-04**: User can edit extracted data inline *(post-core, implement after pipeline is stable)*
 
 ### Interpretation
 
 - [x] **INTERP-01**: System generates management interpretation: summary, real_status, hidden_blockers, ambiguities, clarification_questions
-- [ ] **INTERP-02**: User can view interpretation in a dedicated tab on the record page
-- [ ] **INTERP-03**: real_status is clearly and visibly communicated to the user *(specific visual treatment left to UI layer)*
+- [x] **INTERP-02**: User can view interpretation in a dedicated tab on the record page
+- [x] **INTERP-03**: real_status is clearly and visibly communicated to the user *(specific visual treatment left to UI layer)*
 
 ### History
 
@@ -87,11 +87,11 @@
 | INGEST-04 | Phase 2 | Complete |
 | EXTRACT-01 | Phase 2 | Complete |
 | EXTRACT-02 | Phase 2 | Complete |
-| EXTRACT-03 | Phase 3 | Pending |
+| EXTRACT-03 | Phase 3 | Complete |
 | EXTRACT-04 | Phase 3 | Pending |
 | INTERP-01 | Phase 2 | Complete |
-| INTERP-02 | Phase 3 | Pending |
-| INTERP-03 | Phase 3 | Pending |
+| INTERP-02 | Phase 3 | Complete |
+| INTERP-03 | Phase 3 | Complete |
 | HIST-01 | Phase 4 | Pending |
 | HIST-02 | Phase 4 | Pending |
 | HIST-03 | Phase 4 | Pending |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 2
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-03-29T20:54:33.882Z"
+status: Executing Phase 03
+stopped_at: Completed 03-record-view-01-PLAN.md
+last_updated: "2026-03-30T16:40:05.554Z"
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State: Update Tracker
@@ -20,14 +20,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Given raw text from a call or chat, produce a structured management picture in under 2 minutes — reducing the need to re-read the original.
-**Current focus:** Phase 2 — Core Pipeline
+**Current focus:** Phase 03 — record-view
 
 ## Current Status
 
 **Phase:** 2
 **Milestone:** v1 MVP
-**Last session:** 2026-03-29T20:54:33.879Z
-**Stopped at:** Phase 3 UI-SPEC approved
+**Last session:** 2026-03-30T16:40:05.550Z
+**Stopped at:** Completed 03-record-view-01-PLAN.md
 
 ## Phase Progress
 
@@ -39,7 +39,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 | 4 | History & Review | ⬜ Not started |
 | 5 | Reports | ⬜ Not started |
 
-**Progress:** [██████████] 100%
+**Progress:** [████████░░] 83%
 
 ## Key Files
 
@@ -64,6 +64,8 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 - [Phase 01-foundation]: signOut uses form action pattern — no client JS required
 - [Phase 01-foundation]: Home page is intentional placeholder; Phase 2 replaces with input form
 - [Phase 02-core-pipeline]: Three separate Server Actions for staged loading (saveRecord, extractRecord, interpretRecord) per D-02
+- [Phase 03-record-view]: base-nova preset installs @base-ui/react/tabs (not radix) — API is compatible
+- [Phase 03-record-view]: ExtractionTab handles all 5 categories in one client component via tab discriminant prop
 
 ## Performance Metrics
 
@@ -72,6 +74,7 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 | 01-foundation | 01 | 6 | 2/2 | 22 |
 | 01-foundation | 02 | 30 | 3/3 | 9 |
 | Phase 02-core-pipeline P02 | 4 | 3 tasks | 4 files |
+| Phase 03-record-view P01 | 4 | 3 tasks | 13 files |
 
 ## Notes
 
