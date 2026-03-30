@@ -5,6 +5,7 @@ import { RecordHeader } from '@/components/record/record-header'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { ExtractionTab } from '@/components/record/extraction-tab'
+import { InterpretationTab } from '@/components/record/interpretation-tab'
 
 export default async function RecordPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -82,7 +83,7 @@ export default async function RecordPage({ params }: { params: Promise<{ id: str
                 <ExtractionTab tab="deadlines" data={displayData} />
               </TabsContent>
               <TabsContent value="interpretation" className="mt-0">
-                {/* InterpretationTab placeholder — wired in Task 3 */}
+                <InterpretationTab interpretation={interpretation} />
               </TabsContent>
             </CardContent>
           </Card>
