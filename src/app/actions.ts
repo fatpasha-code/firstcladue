@@ -4,7 +4,52 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { runExtraction } from '@/lib/ai/extraction'
 import { runInterpretation } from '@/lib/ai/interpretation'
+import { ExtractedDataSchema } from '@/lib/ai/schemas'
 import type { Interpretation } from '@/lib/ai/schemas'
+
+export async function saveCorrections(
+  recordId: string,
+  corrections: unknown
+): Promise<{ success: true } | { error: string }> {
+  if (!recordId || typeof recordId !== 'string') {
+    return { error: 'Некорректный ID записи' }
+  }
+
+  const parsed = ExtractedDataSchema.safeParse(corrections)
+  if (!parsed.success) {
+    return { error: 'Некорректные данные' }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Не авторизован' }
+  }
+
+  try {
+    const { error } = await supabase
+      .from('records')
+      .update({
+        user_corrections: parsed.data,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', recordId)
+      .eq('user_id', user.id)
+
+    if (error) {
+      console.error('[saveCorrections] error:', error)
+      return { error: 'Не удалось сохранить изменения' }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('[saveCorrections] error:', error)
+    return { error: 'Не удалось сохранить изменения' }
+  }
+}
 
 export async function signOut() {
   const supabase = await createClient()
