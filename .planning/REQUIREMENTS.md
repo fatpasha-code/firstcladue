@@ -23,7 +23,7 @@
 - [x] **EXTRACT-01**: System extracts: done, in_progress, blockers, assignments, deadlines
 - [x] **EXTRACT-02**: Inferred deadlines are marked separately from explicit ones
 - [x] **EXTRACT-03**: User can view extracted data in structured tabs
-- [ ] **EXTRACT-04**: User can edit extracted data inline *(post-core, implement after pipeline is stable)*
+- [x] **EXTRACT-04**: User can edit extracted data inline *(post-core, implement after pipeline is stable)*
 
 ### Interpretation
 
@@ -88,7 +88,7 @@
 | EXTRACT-01 | Phase 2 | Complete |
 | EXTRACT-02 | Phase 2 | Complete |
 | EXTRACT-03 | Phase 3 | Complete |
-| EXTRACT-04 | Phase 3 | Pending |
+| EXTRACT-04 | Phase 3 | Complete |
 | INTERP-01 | Phase 2 | Complete |
 | INTERP-02 | Phase 3 | Complete |
 | INTERP-03 | Phase 3 | Complete |
