@@ -23,7 +23,7 @@ Given a raw text from a call or chat, produce a structured management picture in
 - [ ] User can paste text (call transcript / chat / notes) and trigger analysis
 - [ ] Claude extracts: done, in_progress, blockers, assignments, deadlines (explicit vs inferred)
 - [ ] Claude generates management interpretation: summary, real_status, hidden_blockers, clarification_questions
-- [ ] User can view and edit extracted data
+- [x] User can view and edit extracted data — *Validated in Phase 03: record-view*
 
 **Review / History**
 - [ ] User can see history of all past records
@@ -88,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 after initialization*
+*Last updated: 2026-03-30 — Phase 03 record-view complete*
