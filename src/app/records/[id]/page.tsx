@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { ExtractionTab } from '@/components/record/extraction-tab'
 import { InterpretationTab } from '@/components/record/interpretation-tab'
+import { RecordEditProvider, EditModeControls } from '@/components/record/edit-provider'
 
 export default async function RecordPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -55,7 +56,11 @@ export default async function RecordPage({ params }: { params: Promise<{ id: str
   return (
     <div className="mx-auto max-w-4xl px-8 py-8">
       <RecordHeader record={record} />
-      <div className="mt-12">
+      <RecordEditProvider recordId={record.id} initialData={displayData}>
+        <div className="flex items-center justify-between mt-12 mb-4">
+          <div />
+          <EditModeControls />
+        </div>
         <Tabs defaultValue="done" className="w-full">
           <TabsList>
             <TabsTrigger value="done">Сделано</TabsTrigger>
@@ -88,7 +93,7 @@ export default async function RecordPage({ params }: { params: Promise<{ id: str
             </CardContent>
           </Card>
         </Tabs>
-      </div>
+      </RecordEditProvider>
     </div>
   )
 }
